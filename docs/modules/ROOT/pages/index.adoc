@@ -2,13 +2,33 @@
 
 include::./includes/attributes.adoc[]
 
-TIP: Describe what the extension does here.
+== Features
+
+* Build, package and serve an https://antora.org/[Antora] site from a Quarkus application
+* Edit the AsciiDoc files in Quarkus `dev` mode - the site is rebuilt upon browser reload
+
+== Prerequisites
+
+The extension uses the Antora container to build the site.
+You will thus need a working container runtime, such as Docker or Podman.
+If you can run tests with Testcontainers then this extension should work flawlessly for you.
+
+== Known issues
+
+Serving static resources in Quarkus `dev` mode suffers from various issues, most notably
+
+* https://github.com/quarkusio/quarkus/issues/39735[#39735] - Using AdditionalStaticResourceBuildItem is not always working propertly in dev-mode.
+You can workaround this one by adding a dummy file under `src/main/resources/META-INF/resources` of your docs module:
+
+[source,shell]
+----
+$ mkdir -p src/main/resources/META-INF/resources
+$ touch src/main/resources/META-INF/resources/workaround-issue-39735
+----
 
 == Installation
 
-If you want to use this extension, you need to add the `io.quarkiverse.antora:quarkus-antora` extension first to your build file.
-
-For instance, with Maven, add the following dependency to your POM file:
+To use this extension, add the following dependency to your POM file:
 
 [source,xml,subs=attributes+]
 ----
@@ -21,7 +41,5 @@ For instance, with Maven, add the following dependency to your POM file:
 
 [[extension-configuration-reference]]
 == Extension Configuration Reference
-
-TIP: Remove this section if you don't have Quarkus configuration properties in your extension.
 
 include::includes/quarkus-antora.adoc[leveloffset=+1, opts=optional]
