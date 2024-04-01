@@ -54,3 +54,8 @@ jobs:
 
       - name: Build with Maven
         run: ./mvnw install -B -ntp
+
+      - name: Fail if there are uncommitted changes
+        shell: bash
+        run: |
+          [[ -z $(git status --porcelain | grep -v antora.yml) ]] || { echo 'There are uncommitted changes'; git status; git diff; exit 1; }
