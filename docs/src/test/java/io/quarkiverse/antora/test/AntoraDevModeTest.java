@@ -24,13 +24,24 @@ public class AntoraDevModeTest {
 
         final Path baseDir = Path.of(".").toAbsolutePath().normalize();
         try (DevModeProcess devMode = new DevModeProcess(baseDir)) {
-            RestAssured
-                    .given()
-                    .contentType(ContentType.HTML)
-                    .get("http://localhost:8080/antora/quarkus-antora/dev/index.html")
-                    .then()
-                    .statusCode(200)
-                    .body(CoreMatchers.containsString("<h1 class=\"page\">Quarkus Antora</h1>"));
+            {
+                final ValidatableResponse response = Awaitility.await().atMost(10, TimeUnit.SECONDS).until(
+                        () -> {
+                            try {
+                                return RestAssured
+                                        .given()
+                                        .contentType(ContentType.HTML)
+                                        .get("http://localhost:8080/antora/quarkus-antora/dev/index.html")
+                                        .then();
+                            } catch (Exception e) {
+                                /* The reload of the service takes some time */
+                                return null;
+                            }
+                        },
+                        resp -> resp != null && resp.extract().statusCode() == 200);
+                response
+                        .body(CoreMatchers.containsString("<h1 class=\"page\">Quarkus Antora</h1>"));
+            }
 
             /* Make sure new.adoc does not exist yet */
             RestAssured
@@ -59,7 +70,7 @@ public class AntoraDevModeTest {
                                     return null;
                                 }
                             },
-                            resp -> resp.extract().statusCode() == 200);
+                            resp -> resp != null && resp.extract().statusCode() == 200);
                     response.body(CoreMatchers.containsString(uniqueContent));
                 }
 
@@ -79,7 +90,7 @@ public class AntoraDevModeTest {
                                     return null;
                                 }
                             },
-                            resp -> resp.extract().statusCode() == 500);
+                            resp -> resp != null && resp.extract().statusCode() == 500);
                     response.body(CoreMatchers.containsString("target of xref not found: non-existent-page.adoc"));
                 }
 
@@ -99,7 +110,7 @@ public class AntoraDevModeTest {
                                     return null;
                                 }
                             },
-                            resp -> resp.extract().statusCode() == 200);
+                            resp -> resp != null && resp.extract().statusCode() == 200);
                     response.body(CoreMatchers.containsString(uniqueContent));
                 }
 
@@ -121,7 +132,7 @@ public class AntoraDevModeTest {
                             return null;
                         }
                     },
-                    resp -> resp.extract().statusCode() == 404);
+                    resp -> resp != null && resp.extract().statusCode() == 404);
 
         }
     }
