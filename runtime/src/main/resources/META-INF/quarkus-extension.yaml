@@ -1,0 +1,11 @@
+name: Antora
+description: Build and serve Antora documentation site
+metadata:
+  keywords:
+    - antora
+    - documentation
+    - asciidoc
+  guide: https://quarkiverse.github.io/quarkiverse-docs/antora/dev/
+  categories:
+    - "miscellaneous"
+  status: "preview"

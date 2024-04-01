@@ -1,0 +1,5 @@
+name: quarkus-antora
+title: Antora
+version: dev
+nav:
+  - modules/ROOT/nav.adoc
