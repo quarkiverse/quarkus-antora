@@ -11,12 +11,18 @@
     </parent>
     <artifactId>quarkus-antora</artifactId>
     <name>Quarkus Antora</name>
+
     <dependencies>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-core</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-vertx-http</artifactId>
+        </dependency>
     </dependencies>
+
     <build>
         <plugins>
             <plugin>
