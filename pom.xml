@@ -63,4 +63,16 @@
             </plugins>
         </pluginManagement>
     </build>
+
+    <profiles>
+        <profile>
+            <id>release</id>
+            <properties>
+                <format.skip>true</format.skip>
+                <enforcer.skip>true</enforcer.skip>
+                <skipTests>true</skipTests>
+                <quarkus.build.skip>true</quarkus.build.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>
