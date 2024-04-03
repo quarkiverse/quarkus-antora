@@ -7,4 +7,4 @@ Features:
 * Build, package and serve an Antora site from a Quarkus application
 * Edit the AsciiDoc files in Quarkus `dev` mode - the site is rebuilt upon browser reload
 
-Check the documentation for more details: https://docs.quarkiverse.io/quarkus-cxf/dev/index.html
+Check the documentation for more details: https://docs.quarkiverse.io/quarkus-antora/dev/index.html
