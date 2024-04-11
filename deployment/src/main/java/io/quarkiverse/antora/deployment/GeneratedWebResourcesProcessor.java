@@ -31,6 +31,10 @@ import io.quarkus.deployment.util.FileUtil;
 import io.quarkus.runtime.LaunchMode;
 import io.quarkus.vertx.http.deployment.RouteBuildItem;
 
+/**
+ * Adapted from
+ * https://github.com/quarkiverse/quarkus-web-bundler/blob/298c2f07e5346b4011332b9fe6ed15ede12e9d1b/deployment/src/main/java/io/quarkiverse/web/bundler/deployment/web/GeneratedWebResourcesProcessor.java
+ */
 public class GeneratedWebResourcesProcessor {
     private static final Logger LOGGER = Logger.getLogger(GeneratedWebResourcesProcessor.class);
 
