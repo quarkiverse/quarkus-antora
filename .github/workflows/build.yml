@@ -1,26 +1,6 @@
 name: Build
 
-on:
-  push:
-    branches:
-      - "main"
-    paths-ignore:
-      - '.gitignore'
-      - 'CODEOWNERS'
-      - 'LICENSE'
-      - '*.md'
-      - '*.adoc'
-      - '*.txt'
-      - '.all-contributorsrc'
-  pull_request:
-    paths-ignore:
-      - '.gitignore'
-      - 'CODEOWNERS'
-      - 'LICENSE'
-      - '*.md'
-      - '*.adoc'
-      - '*.txt'
-      - '.all-contributorsrc'
+on: [pull_request]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
