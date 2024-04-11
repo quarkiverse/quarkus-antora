@@ -15,6 +15,7 @@
         <module>deployment</module>
         <module>runtime</module>
         <module>docs</module>
+        <module>dev-mode-test</module>
     </modules>
     <scm>
         <connection>scm:git:git@github.com:quarkiverse/quarkus-antora.git</connection>

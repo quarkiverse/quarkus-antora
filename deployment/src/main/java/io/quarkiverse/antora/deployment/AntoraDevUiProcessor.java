@@ -14,7 +14,7 @@ public class AntoraDevUiProcessor {
         CardPageBuildItem cardPageBuildItem = new CardPageBuildItem();
 
         cardPageBuildItem.addPage(Page.externalPageBuilder("Antora site")
-                .url("/antora/index.html")
+                .url("/index.html")
                 .icon("font-awesome-solid:file-lines"));
 
         return cardPageBuildItem;

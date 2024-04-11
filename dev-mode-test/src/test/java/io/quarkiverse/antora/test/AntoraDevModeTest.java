@@ -31,7 +31,7 @@ public class AntoraDevModeTest {
                                 return RestAssured
                                         .given()
                                         .contentType(ContentType.HTML)
-                                        .get("http://localhost:8080/antora/quarkus-antora/dev/index.html")
+                                        .get("http://localhost:8080/quarkus-antora/dev/index.html")
                                         .then();
                             } catch (Exception e) {
                                 /* The reload of the service takes some time */
@@ -40,14 +40,14 @@ public class AntoraDevModeTest {
                         },
                         resp -> resp != null && resp.extract().statusCode() == 200);
                 response
-                        .body(CoreMatchers.containsString("<h1 class=\"page\">Quarkus Antora</h1>"));
+                        .body(CoreMatchers.containsString("<h1 class=\"page\">Lorem ipsum</h1>"));
             }
 
             /* Make sure new.adoc does not exist yet */
             RestAssured
                     .given()
                     .contentType(ContentType.HTML)
-                    .get("http://localhost:8080/antora/quarkus-antora/dev/new.html")
+                    .get("http://localhost:8080/quarkus-antora/dev/new.html")
                     .then()
                     .statusCode(404);
 
@@ -63,7 +63,7 @@ public class AntoraDevModeTest {
                                     return RestAssured
                                             .given()
                                             .contentType(ContentType.HTML)
-                                            .get("http://localhost:8080/antora/quarkus-antora/dev/new.html")
+                                            .get("http://localhost:8080/quarkus-antora/dev/new.html")
                                             .then();
                                 } catch (Exception e) {
                                     /* The reload of the service takes some time */
@@ -83,7 +83,7 @@ public class AntoraDevModeTest {
                                     return RestAssured
                                             .given()
                                             .contentType(ContentType.HTML)
-                                            .get("http://localhost:8080/antora/quarkus-antora/dev/new.html")
+                                            .get("http://localhost:8080/quarkus-antora/dev/new.html")
                                             .then();
                                 } catch (Exception e) {
                                     /* The reload of the service takes some time */
@@ -103,7 +103,7 @@ public class AntoraDevModeTest {
                                     return RestAssured
                                             .given()
                                             .contentType(ContentType.HTML)
-                                            .get("http://localhost:8080/antora/quarkus-antora/dev/new.html")
+                                            .get("http://localhost:8080/quarkus-antora/dev/new.html")
                                             .then();
                                 } catch (Exception e) {
                                     /* The reload of the service takes some time */
@@ -125,7 +125,7 @@ public class AntoraDevModeTest {
                             return RestAssured
                                     .given()
                                     .contentType(ContentType.HTML)
-                                    .get("http://localhost:8080/antora/quarkus-antora/dev/new.html")
+                                    .get("http://localhost:8080/quarkus-antora/dev/new.html")
                                     .then();
                         } catch (Exception e) {
                             /* The reload of the service takes some time */
