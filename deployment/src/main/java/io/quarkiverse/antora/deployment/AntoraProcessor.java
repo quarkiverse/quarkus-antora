@@ -33,11 +33,9 @@ import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
-import io.quarkus.deployment.builditem.GeneratedResourceBuildItem;
 import io.quarkus.deployment.builditem.HotDeploymentWatchedFileBuildItem;
 import io.quarkus.deployment.pkg.builditem.BuildSystemTargetBuildItem;
 import io.quarkus.deployment.util.FileUtil;
-import io.quarkus.vertx.http.deployment.spi.AdditionalStaticResourceBuildItem;
 
 public class AntoraProcessor {
     private static final String FEATURE = "antora";
@@ -59,7 +57,6 @@ public class AntoraProcessor {
         try (Stream<Path> files = Files.walk(modulesDir)) {
             files
                     .map(Path::toString)
-                    .peek(p -> System.out.println("watching " + p))
                     .map(HotDeploymentWatchedFileBuildItem::new)
                     .forEach(watchedFiles::produce);
         } catch (IOException e) {
@@ -70,8 +67,7 @@ public class AntoraProcessor {
     @BuildStep
     void buildAntoraSite(
             BuildSystemTargetBuildItem buildSystemTarget,
-            BuildProducer<AdditionalStaticResourceBuildItem> staticResources,
-            BuildProducer<GeneratedResourceBuildItem> generatedResource) {
+            BuildProducer<GeneratedWebResourceBuildItem> staticResourceProducer) {
 
         final Path targetDir = buildSystemTarget.getOutputDirectory();
         if (!Files.isDirectory(targetDir)) {
@@ -104,7 +100,7 @@ public class AntoraProcessor {
         AntoraFrameConsumer antoraFrameConsumer = new AntoraFrameConsumer();
 
         final Path gitRepoRoot = gitRepoRoot(baseDir);
-        final PlaybookInfo pbInfo = augmentAntoraPlaybook(gitRepoRoot, baseDir, targetDir, staticResources);
+        final PlaybookInfo pbInfo = augmentAntoraPlaybook(gitRepoRoot, baseDir, targetDir);
         final Path absAntoraPlaybookPath = pbInfo.playbookPath;
         final Path antoraPlaybookPath = gitRepoRoot.relativize(absAntoraPlaybookPath);
 
@@ -160,13 +156,12 @@ public class AntoraProcessor {
                         if (!Files.exists(indexHtmlCopy)) {
                             /* Override it only if it does not exist */
                             final String newContent = oldContent
-                                    .replaceAll("([^=/\">]*/dev/index.html)", "/antora/$1")
+                                    //.replaceAll("([^=/\">]*/dev/index.html)", "/antora/$1")
                                     /* Do not cache the redirect page */
                                     .replace("<meta http-equiv=\"refresh\"",
                                             "<meta http-equiv=\"Cache-Control\" content=\"no-store\">\n<meta http-equiv=\"refresh\"");
-                            generatedResource.produce(new GeneratedResourceBuildItem("META-INF/resources/index.html",
+                            staticResourceProducer.produce(new GeneratedWebResourceBuildItem("/index.html",
                                     newContent.getBytes(StandardCharsets.UTF_8)));
-                            staticResources.produce(new AdditionalStaticResourceBuildItem("/index.html", false));
                         }
                         bytes = oldContent
                                 /* Do not cache the redirect page */
@@ -180,10 +175,8 @@ public class AntoraProcessor {
                             throw new RuntimeException("Could not read " + absP, e);
                         }
                     }
-                    log.infof("Producing META-INF/resources/antora/%s", relPath);
-                    generatedResource.produce(new GeneratedResourceBuildItem("META-INF/resources/antora/" + relPath,
-                            bytes));
-                    staticResources.produce(new AdditionalStaticResourceBuildItem("/antora/" + relPath, false));
+                    log.infof("Producing META-INF/antora/%s", relPath);
+                    staticResourceProducer.produce(new GeneratedWebResourceBuildItem("/" + relPath, bytes));
                 }
             });
         } catch (IOException e) {
@@ -207,8 +200,7 @@ public class AntoraProcessor {
     private static PlaybookInfo augmentAntoraPlaybook(
             Path gitRepoRoot,
             Path baseDir,
-            Path targetDir,
-            BuildProducer<AdditionalStaticResourceBuildItem> staticResources) {
+            Path targetDir) {
 
         final Path augmentedAntoraPlaybookYml = targetDir.resolve("antora-playbook.yml");
 
