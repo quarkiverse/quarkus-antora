@@ -9,25 +9,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.jboss.logging.Logger;
-import org.junit.jupiter.api.Assertions;
-import org.testcontainers.containers.BindMode;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.output.BaseConsumer;
-import org.testcontainers.containers.output.OutputFrame;
-import org.testcontainers.containers.output.OutputFrame.OutputType;
-import org.testcontainers.containers.output.WaitingConsumer;
 import org.yaml.snakeyaml.Yaml;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
@@ -38,6 +23,7 @@ import io.quarkus.deployment.pkg.builditem.BuildSystemTargetBuildItem;
 import io.quarkus.deployment.util.FileUtil;
 
 public class AntoraProcessor {
+
     private static final String FEATURE = "antora";
 
     private static final int INVALID_UID = -1;
@@ -79,66 +65,20 @@ public class AntoraProcessor {
         }
         final Path baseDir = targetDir.getParent();
 
-        /*
-         * We need the current user's uid so that Antora container generates the files as that user
-         * so that they can be later deleted with mvn clean
-         */
-        int uid = INVALID_UID;
-        try {
-            uid = (Integer) Files.getAttribute(targetDir, "unix:uid");
-            log.info("Detected unix:uid " + uid);
-        } catch (Exception e) {
-            if (System.getProperty("os.name").toLowerCase().indexOf("win") < 0) {
-                /* Warn on non-Windows, ignore otherwise */
-                log.warn("Could not read unix:uid of " + targetDir + " directory", e);
-            }
-        }
-        final int finalUid = uid;
-
-        WaitingConsumer logConsumer = new WaitingConsumer().withRemoveAnsiCodes(true);
-
-        AntoraFrameConsumer antoraFrameConsumer = new AntoraFrameConsumer();
-
         final Path gitRepoRoot = gitRepoRoot(baseDir);
         final PlaybookInfo pbInfo = augmentAntoraPlaybook(gitRepoRoot, baseDir, targetDir);
         final Path absAntoraPlaybookPath = pbInfo.playbookPath;
         final Path antoraPlaybookPath = gitRepoRoot.relativize(absAntoraPlaybookPath);
 
         if (Files.isDirectory(pbInfo.outDir)) {
-            final Path movedOutDir = targetDir
-                    .resolve("antora-site-" + UUID.randomUUID().toString());
             try {
-                Files.move(pbInfo.outDir, movedOutDir);
+                FileUtil.deleteDirectory(pbInfo.outDir);
             } catch (IOException e) {
-                throw new RuntimeException("Could not move " + pbInfo.outDir + " -> " + movedOutDir);
-            }
-            try {
-                FileUtil.deleteDirectory(movedOutDir);
-            } catch (IOException e) {
-                throw new RuntimeException("Could not remove " + movedOutDir);
+                throw new RuntimeException("Could not remove " + pbInfo.outDir);
             }
         }
 
-        try (GenericContainer<?> antoraContainer = new GenericContainer<>("antora/antora:3.0.1")) {
-            if (finalUid >= 0) {
-                antoraContainer
-                        .withCreateContainerCmdModifier(cmd -> {
-                            cmd.withUser(String.valueOf(finalUid));
-                        });
-            }
-            antoraContainer
-                    .withFileSystemBind(gitRepoRoot.toString(), "/antora", BindMode.READ_WRITE)
-                    .withCommand("--cache-dir=./antora-cache", antoraPlaybookPath.toString())
-                    .withLogConsumer(antoraFrameConsumer)
-                    .withLogConsumer(logConsumer);
-            antoraContainer.start();
-            try {
-                logConsumer.waitUntilEnd(30, TimeUnit.SECONDS);
-            } catch (TimeoutException e) {
-                throw new RuntimeException("Timeout waiting for Antora log consumer", e);
-            }
-        }
-        antoraFrameConsumer.assertNoErrors();
+        buildWithContainer(gitRepoRoot, antoraPlaybookPath);
 
         try (Stream<Path> files = Files.walk(pbInfo.outDir)) {
             files.forEach(absP -> {
@@ -183,6 +123,16 @@ public class AntoraProcessor {
             throw new RuntimeException("Could not walk " + pbInfo.outDir, e);
         }
 
+    }
+
+    private void buildWithContainer(final Path gitRepoRoot, final Path antoraPlaybookPath) {
+        try {
+            new NativeImageBuildRunner().build(gitRepoRoot, antoraPlaybookPath);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to build native image", e);
+        }
     }
 
     private Path gitRepoRoot(Path startDir) {
@@ -285,184 +235,6 @@ public class AntoraProcessor {
     }
 
     private record PlaybookInfo(Path playbookPath, Path outDir) {
-
-    }
-
-    static class AntoraFrame {
-        String level;
-        long time;
-        String name;
-        AntoraFile file;
-        AntoraSource source;
-        String msg;
-        String hint;
-        List<AntoraStackFrame> stack;
-
-        public String getLevel() {
-            return level;
-        }
-
-        public long getTime() {
-            return time;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public AntoraFile getFile() {
-            return file;
-        }
-
-        public AntoraSource getSource() {
-            return source;
-        }
-
-        public String getMsg() {
-            return msg;
-        }
-
-        public List<AntoraStackFrame> getStack() {
-            return stack;
-        }
-
-        public String getHint() {
-            return hint;
-        }
-
-        @Override
-        public String toString() {
-            return file + ": " + msg
-                    + (hint != null ? (" " + hint) : "")
-                    + (stack != null && !stack.isEmpty()
-                            ? ("\n    at " + stack.stream()
-                                    .map(AntoraStackFrame::toString)
-                                    .collect(Collectors.joining("\n    at ")))
-                            : "");
-        }
-
-        static class AntoraSource {
-            String url;
-            String worktree;
-            String refname;
-            String startPath;
-
-            public String getUrl() {
-                return url;
-            }
-
-            public String getWorktree() {
-                return worktree;
-            }
-
-            public String getRefname() {
-                return refname;
-            }
-
-            public String getStartPath() {
-                return startPath;
-            }
-        }
-
-        static class AntoraFile {
-            String path;
-            int line;
-
-            @Override
-            public String toString() {
-                return path + ":" + line;
-            }
-
-            public String getPath() {
-                return path;
-            }
-
-            public int getLine() {
-                return line;
-            }
-        }
-
-        static class AntoraStackFrame {
-            AntoraFile file;
-            AntoraSource source;
-
-            public AntoraFile getFile() {
-                return file;
-            }
-
-            public AntoraSource getSource() {
-                return source;
-            }
-
-            @Override
-            public String toString() {
-                return file != null ? file.toString() : "";
-            }
-        }
-    }
-
-    private static class AntoraFrameConsumer extends BaseConsumer<AntoraFrameConsumer> {
-
-        private final ObjectMapper mapper;
-        private final List<AntoraFrame> frames = new ArrayList<>();
-        private final Map<String, JsonProcessingException> exceptions = new LinkedHashMap<>();
-
-        public AntoraFrameConsumer() {
-            mapper = new ObjectMapper();
-        }
-
-        @Override
-        public void accept(OutputFrame t) {
-            if (t.getType() == OutputType.END) {
-                return;
-            }
-            final String rawFrame = t.getUtf8String();
-            try {
-                final AntoraFrame frame = mapper.readValue(rawFrame, AntoraFrame.class);
-                synchronized (frames) {
-                    frames.add(frame);
-                }
-                switch (frame.getLevel()) {
-                    case "info":
-                        log.info(frame.toString());
-                        break;
-                    case "warn":
-                        log.warn(frame.toString());
-                        break;
-                    case "error":
-                        log.error(frame.toString());
-                        break;
-                    case "fatal":
-                        log.fatal(frame.toString());
-                        break;
-                    default:
-                        throw new IllegalStateException("Unexpected AntoraFrame.level " + frame.getLevel());
-                }
-            } catch (JsonProcessingException e) {
-                synchronized (exceptions) {
-                    exceptions.put(rawFrame, e);
-                }
-            }
-        }
-
-        public void assertNoErrors() {
-            synchronized (exceptions) {
-                if (!exceptions.isEmpty()) {
-                    Entry<String, JsonProcessingException> e = exceptions.entrySet().iterator().next();
-                    throw new RuntimeException("Could not parse AntoraFrame " + e.getKey(), e.getValue());
-                }
-            }
-
-            synchronized (frames) {
-                String errors = frames.stream()
-                        .filter(f -> f.getLevel().equals("error") || f.getLevel().equals("fatal"))
-                        .map(AntoraFrame::toString)
-                        .collect(Collectors.joining("\n"));
-                if (errors != null && !errors.isEmpty()) {
-                    Assertions.fail(errors);
-                }
-            }
-        }
 
     }
 }
