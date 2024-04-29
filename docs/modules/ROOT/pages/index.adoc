@@ -11,7 +11,6 @@ include::./includes/attributes.adoc[]
 
 The extension uses the Antora container to build the site.
 You will thus need a working container runtime, such as Docker or Podman.
-If you can run tests with Testcontainers then this extension should work flawlessly for you.
 
 == Installation
 
