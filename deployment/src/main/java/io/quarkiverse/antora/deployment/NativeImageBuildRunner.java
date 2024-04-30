@@ -88,7 +88,7 @@ public class NativeImageBuildRunner {
         cmd.add("--name");
         cmd.add(containerName);
 
-        cmd.add("antora/antora:3.0.1");
+        cmd.add("docker.io/antora/antora:3.0.1");
 
         cmd.add("--cache-dir=./antora-cache");
         cmd.add(antoraPlaybookPath.toString());
