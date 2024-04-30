@@ -1,5 +1,5 @@
 release:
-  current-version: 0.0.3
+  current-version: 0.0.4
   current-major-minor-version: 0.0
-  next-version: 0.0.4-SNAPSHOT
+  next-version: 0.0.5-SNAPSHOT
 
