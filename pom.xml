@@ -14,13 +14,11 @@
     <modules>
         <module>deployment</module>
         <module>runtime</module>
-        <module>docs</module>
         <module>dev-mode-test</module>
     </modules>
     <scm>
         <connection>scm:git:git@github.com:quarkiverse/quarkus-antora.git</connection>
-        <developerConnection>
-            scm:git:git@github.com:quarkiverse/quarkus-antora.git</developerConnection>
+        <developerConnection>scm:git:git@github.com:quarkiverse/quarkus-antora.git</developerConnection>
         <url>https://github.com/quarkiverse/quarkus-antora</url>
       <tag>HEAD</tag>
   </scm>
@@ -65,12 +63,24 @@
 
     <profiles>
         <profile>
+            <id>docs</id>
+            <activation>
+                <property>
+                    <name>performRelease</name>
+                    <value>!true</value>
+                </property>
+            </activation>
+            <modules>
+                <module>docs</module>
+            </modules>
+        </profile>
+        <profile>
             <id>release</id>
             <properties>
-                <format.skip>true</format.skip>
+                <quarkus.build.skip>true</quarkus.build.skip>
                 <enforcer.skip>true</enforcer.skip>
                 <skipTests>true</skipTests>
-                <quarkus.build.skip>true</quarkus.build.skip>
+                <format.skip>true</format.skip>
             </properties>
         </profile>
     </profiles>
