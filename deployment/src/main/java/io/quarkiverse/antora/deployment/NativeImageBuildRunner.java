@@ -277,12 +277,18 @@ public class NativeImageBuildRunner {
 
         static class AntoraSource {
             String url;
+            String local;
             String worktree;
             String refname;
+            String reftype;
             String startPath;
 
             public String getUrl() {
                 return url;
+            }
+
+            public String getLocal() {
+                return local;
             }
 
             public String getWorktree() {
@@ -291,6 +297,10 @@ public class NativeImageBuildRunner {
 
             public String getRefname() {
                 return refname;
+            }
+
+            public String getReftype() {
+                return reftype;
             }
 
             public String getStartPath() {
