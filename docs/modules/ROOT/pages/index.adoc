@@ -75,8 +75,10 @@ INFO  [io.qua.dep.dev.RuntimeUpdatesProcessor] ... Live reload total time: 1.151
 
 Then the page should get loaded with the new title "I love Antora".
 
+[[test-warnings]]
 image::live-edit.png[optional attribute,optional attribute]
 
+[[test-warnings]]
 Once you are done with editing, hit `Q` or `CRTL+C` to exit the dev mode.
 
 == Configuration
