@@ -125,6 +125,25 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-config-doc-maven-plugin</artifactId>
+                <version>${quarkus.version}</version>
+                <executions>
+                    <execution>
+                        <id>generate-config-doc</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>generate-asciidoc</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${skipDocs}</skip>
+                            <enableEnumTooltips>true</enableEnumTooltips>
+                            <targetDirectory>${project.basedir}/modules/ROOT/pages/includes</targetDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 

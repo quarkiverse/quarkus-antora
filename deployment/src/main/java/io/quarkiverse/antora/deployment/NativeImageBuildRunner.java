@@ -43,7 +43,7 @@ public class NativeImageBuildRunner {
         containerName = "antora-" + RandomStringUtils.random(5, true, false);
     }
 
-    public void build(Path outputDir, Path antoraPlaybookPath)
+    public void build(String antoraImageName, Path outputDir, Path antoraPlaybookPath)
             throws InterruptedException, IOException {
 
         final List<String> cmd = new ArrayList<>();
@@ -88,7 +88,7 @@ public class NativeImageBuildRunner {
         cmd.add("--name");
         cmd.add(containerName);
 
-        cmd.add("docker.io/antora/antora:3.0.1");
+        cmd.add(antoraImageName);
 
         cmd.add("--cache-dir=./antora-cache");
         cmd.add(antoraPlaybookPath.toString());

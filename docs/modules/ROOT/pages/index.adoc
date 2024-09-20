@@ -78,3 +78,7 @@ Then the page should get loaded with the new title "I love Antora".
 image::live-edit.png[optional attribute,optional attribute]
 
 Once you are done with editing, hit `Q` or `CRTL+C` to exit the dev mode.
+
+== Configuration
+
+include::./includes/quarkus-antora.adoc[]
