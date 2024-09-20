@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: my-app-container
+          # Dependabot should keep updating the following line. We still need to upgrade in FixedConfig.java manually
+          image: docker.io/antora/antora:3.1.8
+          ports:
+            - containerPort: 80

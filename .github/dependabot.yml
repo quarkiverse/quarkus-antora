@@ -9,3 +9,7 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "daily"
+  - package-ecosystem: "docker" # So far this only triggers updates in the fake deployment.yaml so that we are notified. We still need to upgrade in FixedConfig.java manually
+    directory: "/"
+    schedule:
+      interval: "daily"
