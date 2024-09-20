@@ -19,6 +19,6 @@ public interface FixedConfig {
      * @asciidoclet
      * @since 0.0.5
      */
-    @WithDefault("docker.io/antora/antora:3.0.1")
+    @WithDefault("docker.io/antora/antora:3.1.9")
     String image();
 }
