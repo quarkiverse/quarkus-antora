@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 import org.jboss.logging.Logger;
 import org.yaml.snakeyaml.Yaml;
 
+import io.quarkiverse.antora.FixedConfig;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -52,6 +53,7 @@ public class AntoraProcessor {
 
     @BuildStep
     void buildAntoraSite(
+            FixedConfig fixedConfig,
             BuildSystemTargetBuildItem buildSystemTarget,
             BuildProducer<GeneratedWebResourceBuildItem> staticResourceProducer) {
 
@@ -78,7 +80,7 @@ public class AntoraProcessor {
             }
         }
 
-        buildWithContainer(gitRepoRoot, antoraPlaybookPath);
+        buildWithContainer(fixedConfig.image(), gitRepoRoot, antoraPlaybookPath);
 
         try (Stream<Path> files = Files.walk(pbInfo.outDir)) {
             files.forEach(absP -> {
@@ -125,9 +127,9 @@ public class AntoraProcessor {
 
     }
 
-    private void buildWithContainer(final Path gitRepoRoot, final Path antoraPlaybookPath) {
+    private void buildWithContainer(String antoraImageName, final Path gitRepoRoot, final Path antoraPlaybookPath) {
         try {
-            new NativeImageBuildRunner().build(gitRepoRoot, antoraPlaybookPath);
+            new NativeImageBuildRunner().build(antoraImageName, gitRepoRoot, antoraPlaybookPath);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (IOException e) {

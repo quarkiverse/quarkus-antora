@@ -1,0 +1,32 @@
+:summaryTableId: quarkus-antora_quarkus-antora
+[.configuration-legend]
+icon:lock[title=Fixed at build time] Configuration property fixed at build time - All other configuration properties are overridable at runtime
+[.configuration-reference.searchable, cols="80,.^10,.^10"]
+|===
+
+h|[.header-title]##Configuration property##
+h|Type
+h|Default
+
+a|icon:lock[title=Fixed at build time] [[quarkus-antora_quarkus-antora-image]] [.property-path]##`quarkus.antora.image`##
+
+[.description]
+--
+The fully qualified name of the Antora container image to use for generating the documentation site.
+Example: `docker.io/antora/antora:3.0.1`
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_ANTORA_IMAGE+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_ANTORA_IMAGE+++`
+endif::add-copy-button-to-env-var[]
+--
+|string
+|`docker.io/antora/antora:3.0.1`
+
+|===
+
+
+:!summaryTableId:
