@@ -6,6 +6,7 @@ include::./includes/attributes.adoc[]
 
 * Build, package and serve an https://antora.org/[Antora] site from a Quarkus application
 * Edit the AsciiDoc files in Quarkus `dev` mode and the site is rebuilt upon browser reload
+* xref:testing.adoc[Test] the generated Antora site
 
 == Prerequisites
 
@@ -25,7 +26,8 @@ To use this extension, add the following dependency to your POM file:
 </dependency>
 ----
 
-== Example
+[[dev-mode]]
+== Edit in Quarkus dev mode
 
 The `https://github.com/quarkiverse/quarkus-antora/tree/main/docs[docs]` module in the source tree of Quarkus Antora may serve as a runnable example.
 

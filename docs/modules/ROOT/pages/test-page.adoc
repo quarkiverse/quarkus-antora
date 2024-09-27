@@ -1,0 +1,22 @@
+= Test page
+
+This is a test page that is not supposed to be linked from the Navigation.
+There are some intentional issues here to validate Quarkus Antora code.
+
+[[test-element-id-used-twice]]
+A paragraph
+
+[[test-element-id-used-twice]]
+Using an element ID twice should trigger a warning parseable to `io.quarkiverse.antora.deployment.NativeImageBuildRunner.AntoraFrame`
+
+Some invalid links:
+
+* https://salkjasjhashgajhhsahgahjas.com[host not found]
+* https://quarkus.io/fake-page[404]
+* https://quarkus.io/guides/building-native-image#fake-fragment[bad fragment]
+
+Some valid links:
+
+* https://quarkus.io/guides/building-native-image#prerequisites[good fragment]
+* {test-link-quarkus-docs-base}/getting-started[link with an AsciiDoc attribute on line 21]
+

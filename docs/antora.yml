@@ -3,3 +3,7 @@ title: Antora
 version: dev
 nav:
   - modules/ROOT/nav.adoc
+
+asciidoc:
+  attributes:
+    test-link-quarkus-docs-base: https://quarkus.io/version/3.15/guides
