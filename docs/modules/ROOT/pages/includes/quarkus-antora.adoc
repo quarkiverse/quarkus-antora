@@ -8,7 +8,7 @@ h|[.header-title]##Configuration property##
 h|Type
 h|Default
 
-a|icon:lock[title=Fixed at build time] [[quarkus-antora_quarkus-antora-image]] [.property-path]##`quarkus.antora.image`##
+a|icon:lock[title=Fixed at build time] [[quarkus-antora_quarkus-antora-image]] [.property-path]##link:#quarkus-antora_quarkus-antora-image[`quarkus.antora.image`]##
 
 [.description]
 --
