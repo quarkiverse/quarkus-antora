@@ -15,7 +15,6 @@
         <dependency>
             <groupId>io.quarkiverse.antora</groupId>
             <artifactId>quarkus-antora</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
         <!-- Test dependencies -->

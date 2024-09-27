@@ -14,6 +14,7 @@
     <modules>
         <module>deployment</module>
         <module>runtime</module>
+        <module>utils</module>
         <module>dev-mode-test</module>
     </modules>
     <scm>
@@ -27,6 +28,9 @@
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <assertj.version>3.26.3</assertj.version>
+        <jsoup.version>1.18.1</jsoup.version>
         <quarkus.version>3.15.0</quarkus.version>
     </properties>
     <dependencyManagement>
@@ -38,6 +42,34 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
+            <dependency>
+                <groupId>io.quarkiverse.antora</groupId>
+                <artifactId>quarkus-antora</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkiverse.antora</groupId>
+                <artifactId>quarkus-antora-deployment</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkiverse.antora</groupId>
+                <artifactId>quarkus-antora-utils</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jsoup</groupId>
+                <artifactId>jsoup</artifactId>
+                <version>${jsoup.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>${assertj.version}</version>
+                <scope>test</scope>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
     <build>
