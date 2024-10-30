@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
 import org.jboss.logging.Logger;
@@ -38,9 +39,26 @@ public class AntoraProcessor {
     @BuildStep(onlyIf = IsDevelopment.class)
     void watchResources(BuildProducer<HotDeploymentWatchedFileBuildItem> watchedFiles) {
         final Path baseDir = Path.of(".").toAbsolutePath().normalize();
-        watchedFiles.produce(new HotDeploymentWatchedFileBuildItem(baseDir.resolve("antora-playbook.yml").toString()));
+        final Path playbookPath = baseDir.resolve("antora-playbook.yml");
+        if (Files.isRegularFile(playbookPath)) {
+            watchedFiles.produce(new HotDeploymentWatchedFileBuildItem(playbookPath.toString()));
+            try {
+                final Map<String, Object> playbook = new Yaml().load(Files.readString(playbookPath, StandardCharsets.UTF_8));
+                handleSupplementalFiles(playbook, (ui, oldValue) -> {
+                    final Path supplementedPath = baseDir.resolve(oldValue).normalize();
+                    watchDir(watchedFiles, supplementedPath);
+                });
+
+            } catch (IOException e) {
+                throw new RuntimeException("Could not read " + playbookPath, e);
+            }
+        }
         watchedFiles.produce(new HotDeploymentWatchedFileBuildItem(baseDir.resolve("antora.yml").toString()));
         final Path modulesDir = baseDir.resolve("modules");
+        watchDir(watchedFiles, modulesDir);
+    }
+
+    static void watchDir(BuildProducer<HotDeploymentWatchedFileBuildItem> watchedFiles, final Path modulesDir) {
         try (Stream<Path> files = Files.walk(modulesDir)) {
             files
                     .map(Path::toString)
@@ -197,6 +215,8 @@ public class AntoraProcessor {
         final Path outputDir = Path.of("classes/META-INF/resources/antora");
         output.put("dir", "./" + outputDir.toString());
 
+        handleSupplementalFiles(playbook, (ui, oldValue) -> ui.put("supplemental_files", "./." + oldValue));
+
         try (Writer out = Files.newBufferedWriter(augmentedAntoraPlaybookYml, StandardCharsets.UTF_8)) {
             yaml.dump(playbook, out);
         } catch (IOException e) {
@@ -204,6 +224,23 @@ public class AntoraProcessor {
         }
 
         return new PlaybookInfo(augmentedAntoraPlaybookYml, targetDir.resolve(outputDir));
+    }
+
+    static void handleSupplementalFiles(Map<String, Object> playbook,
+            BiConsumer<Map<String, Object>, String> supplementalFilesConsumer) {
+        final Object ui = playbook.get("ui");
+        if (ui instanceof Map) {
+            final Object rawSf = ((Map<String, Object>) ui).get("supplemental_files");
+            if (rawSf instanceof String) {
+                // If it is a string, then it is a directory path that we possibly need to relocate
+                // https://docs.antora.org/antora/latest/playbook/ui-supplemental-files/
+                //final String sf = (String) rawSf;
+                final String sf = (String) rawSf;
+                if (sf.startsWith("./")) {
+                    supplementalFilesConsumer.accept((Map<String, Object>) ui, sf);
+                }
+            }
+        }
     }
 
     private static Map<String, Object> defaultPlaybook(Map<String, Object> antoraYaml) {

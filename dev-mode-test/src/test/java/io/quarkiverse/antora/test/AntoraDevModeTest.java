@@ -1,7 +1,5 @@
 package io.quarkiverse.antora.test;
 
-import static io.restassured.RestAssured.given;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -9,6 +7,7 @@ import java.nio.file.Path;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Test;
@@ -134,6 +133,52 @@ public class AntoraDevModeTest {
                     },
                     resp -> resp != null && resp.extract().statusCode() == 404);
 
+            /* Live edit supplemental-ui */
+            {
+                final ValidatableResponse response = Awaitility.await().atMost(10, TimeUnit.SECONDS).until(
+                        () -> {
+                            try {
+                                return RestAssured
+                                        .given()
+                                        .contentType(ContentType.HTML)
+                                        .get("http://localhost:8080/quarkus-antora/dev/index.html")
+                                        .then();
+                            } catch (Exception e) {
+                                /* The reload of the service takes some time */
+                                return null;
+                            }
+                        },
+                        resp -> resp != null && resp.extract().statusCode() == 200);
+                response
+                        .body(CoreMatchers.containsString(">Home supplemental<"));
+            }
+            final Path headerContentHbs = baseDir.resolve("supplemental-ui/partials/header-content.hbs");
+            final String oldContent = Files.readString(headerContentHbs, StandardCharsets.UTF_8);
+            try {
+                Assertions.assertThat(oldContent).contains(">Home supplemental<");
+                Files.writeString(headerContentHbs, oldContent.replace(">Home supplemental<", ">Home supplemental changed<"),
+                        StandardCharsets.UTF_8);
+                {
+                    Awaitility.await().atMost(10, TimeUnit.SECONDS).until(
+                            () -> {
+                                try {
+                                    return RestAssured
+                                            .given()
+                                            .contentType(ContentType.HTML)
+                                            .get("http://localhost:8080/quarkus-antora/dev/index.html")
+                                            .then();
+                                } catch (Exception e) {
+                                    /* The reload of the service takes some time */
+                                    return null;
+                                }
+                            },
+                            resp -> resp != null && resp.extract().statusCode() == 200
+                                    && resp.extract().body().asString().contains(">Home supplemental changed<"));
+                }
+            } finally {
+                /* Restore the old content bc. it is tracked by git */
+                Files.writeString(headerContentHbs, oldContent, StandardCharsets.UTF_8);
+            }
         }
     }
 }
