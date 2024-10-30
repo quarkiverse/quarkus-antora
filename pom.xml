@@ -108,6 +108,12 @@
         </profile>
         <profile>
             <id>release</id>
+            <activation>
+                <property>
+                    <name>performRelease</name>
+                    <value>true</value>
+                </property>
+            </activation>
             <properties>
                 <quarkus.build.skip>true</quarkus.build.skip>
                 <enforcer.skip>true</enforcer.skip>
