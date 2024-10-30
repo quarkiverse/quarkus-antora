@@ -1,3 +1,0 @@
-= New Page
-
-xref:non-existent-page.adoc[non-existent]
