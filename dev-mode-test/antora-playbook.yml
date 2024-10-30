@@ -1,0 +1,13 @@
+site:
+  title: Quarkus Antora
+  start_page: quarkus-antora::index.adoc
+content:
+  sources: 
+  - url: .
+    branches: HEAD
+    edit_url: 'https://gitlab.cee.redhat.com/-/ide/project/fuse-prod/fuse-prod.pages.redhat.com/edit/main/-/{path}'
+ui: 
+  supplemental_files: ./supplemental-ui
+  bundle:
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
+    snapshot: true
