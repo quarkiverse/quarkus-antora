@@ -12,6 +12,7 @@ import org.awaitility.Awaitility;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Test;
 
+import io.quarkus.logging.Log;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.ValidatableResponse;
@@ -37,7 +38,10 @@ public class AntoraDevModeTest {
                                 return null;
                             }
                         },
-                        resp -> resp != null && resp.extract().statusCode() == 200);
+                        resp -> {
+                            Log.info("resp " + (resp != null ? resp.extract().statusCode() : ""));
+                            return resp != null && resp.extract().statusCode() == 200;
+                        });
                 response
                         .body(CoreMatchers.containsString("<h1 class=\"page\">Lorem ipsum</h1>"));
             }

@@ -6,8 +6,9 @@
         <artifactId>quarkus-antora-parent</artifactId>
         <version>0.3.1-SNAPSHOT</version>
     </parent>
-    <artifactId>quarkus-antora-utils</artifactId>
-    <name>Quarkus Antora</name>
+    <artifactId>quarkus-antorassured</artifactId>
+    <name>Quarkus AntorAssured</name>
+    <description>A utility for testing Antora documentation sites</description>
 
     <dependencies>
         <dependency>

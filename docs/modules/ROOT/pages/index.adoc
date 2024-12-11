@@ -11,7 +11,7 @@ include::./includes/attributes.adoc[]
 == Prerequisites
 
 The extension uses the Antora container to build the site.
-You will thus need a working container runtime, such as Docker or Podman.
+You will therefore need a working container runtime, such as Docker or Podman.
 
 == Installation
 

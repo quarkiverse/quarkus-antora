@@ -38,7 +38,7 @@
         <!-- tag::dead-links[] -->
         <dependency>
             <groupId>io.quarkiverse.antora</groupId>
-            <artifactId>quarkus-antora-utils</artifactId>
+            <artifactId>quarkus-antorassured</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- end::dead-links[] -->
