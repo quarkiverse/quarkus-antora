@@ -14,7 +14,7 @@
     <modules>
         <module>deployment</module>
         <module>runtime</module>
-        <module>utils</module>
+        <module>antorassured</module>
         <module>dev-mode-test</module>
     </modules>
     <scm>
@@ -55,7 +55,7 @@
             </dependency>
             <dependency>
                 <groupId>io.quarkiverse.antora</groupId>
-                <artifactId>quarkus-antora-utils</artifactId>
+                <artifactId>quarkus-antorassured</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
