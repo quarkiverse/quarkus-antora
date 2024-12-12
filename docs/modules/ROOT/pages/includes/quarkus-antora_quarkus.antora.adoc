@@ -23,7 +23,7 @@ Environment variable: `+++QUARKUS_ANTORA_IMAGE+++`
 endif::add-copy-button-to-env-var[]
 --
 |string
-|`docker.io/antora/antora:3.1.9`
+|`docker.io/antora/antora:3.1.10`
 
 |===
 
