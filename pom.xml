@@ -31,6 +31,8 @@
 
         <assertj.version>3.27.0</assertj.version>
         <jsoup.version>1.18.3</jsoup.version>
+        <groovy-maven-plugin.version>2.1.1</groovy-maven-plugin.version>
+        <groovy.version>3.0.23</groovy.version>
         <quarkus.version>3.17.5</quarkus.version>
     </properties>
     <dependencyManagement>
@@ -88,6 +90,26 @@
                             <arg>-parameters</arg>
                         </compilerArgs>
                     </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.gmaven</groupId>
+                    <artifactId>groovy-maven-plugin</artifactId>
+                    <version>${groovy-maven-plugin.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.codehaus.groovy</groupId>
+                            <artifactId>groovy-all</artifactId>
+                            <version>${groovy.version}</version>
+                            <type>pom</type>
+                            <exclusions>
+                                <exclusion>
+                                    <!-- groovy-testng depends on testng 7.2.0 which is not on maven central -->
+                                    <groupId>org.codehaus.groovy</groupId>
+                                    <artifactId>groovy-testng</artifactId>
+                                </exclusion>
+                            </exclusions>
+                        </dependency>
+                    </dependencies>
                 </plugin>
             </plugins>
         </pluginManagement>

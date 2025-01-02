@@ -4,7 +4,7 @@
     <parent>
         <groupId>io.quarkiverse.antora</groupId>
         <artifactId>quarkus-antora-parent</artifactId>
-        <version>1.0.1-SNAPSHOT</version>
+        <version>0.0.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -126,11 +126,6 @@
                                     <include>AntoraSiteTest.java</include>
                                     <filtering>false</filtering>
                                 </resource>
-                                <resource>
-                                    <directory>${project.basedir}</directory>
-                                    <include>pom.xml</include>
-                                    <filtering>false</filtering>
-                                </resource>
                             </resources>
                         </configuration>
                     </execution>
@@ -150,6 +145,37 @@
                                     <filtering>false</filtering>
                                 </resource>
                             </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.gmaven</groupId>
+                <artifactId>groovy-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-pom-xml-to-docs</id>
+                        <goals>
+                            <goal>execute</goal>
+                        </goals>
+                        <phase>compile</phase><!-- same as the maven-resources-plugin above -->
+                        <configuration>
+                            <!-- Copy pom.xml changing the parent version so that the destination -->
+                            <!-- file does not change after every release -->
+                            <source>
+                                import java.nio.file.Files
+                                import java.nio.file.Path
+                                def srcPath = project.basedir.toPath().resolve('pom.xml')
+                                def newContent = srcPath.getText('UTF-8')
+                                newContent = newContent.replace('&lt;version&gt;${project.version}&lt;/version&gt;', '&lt;version&gt;0.0.1-SNAPSHOT&lt;/version&gt;')
+                                def destPath = project.basedir.toPath().resolve('modules/ROOT/examples/testing/pom.xml')
+                                if (!Files.exists(destPath) || !newContent.equals(destPath.getText('UTF-8'))) {
+                                    destPath.setText(newContent.toString(), 'UTF-8')
+                                    println('Updated ' + destPath.toString())
+                                } else {
+                                    println(destPath.toString() + ' is up to date')
+                                }
+                            </source>
                         </configuration>
                     </execution>
                 </executions>
