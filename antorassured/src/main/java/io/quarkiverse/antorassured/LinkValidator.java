@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Pattern;
 
 import org.jboss.logging.Logger;
 import org.jsoup.Connection.Method;
@@ -40,6 +41,8 @@ public interface LinkValidator {
 
     static class LinkValidatorImpl implements LinkValidator {
         private static final Logger log = Logger.getLogger(AntorAssured.class);
+
+        private static final Pattern JAVADOC_FRAGMENT_CHARS = Pattern.compile("[\\(\\)\\,\\.]");
 
         /** JSoup documents by fragment-less URI */
         private final Map<String, CacheEntry> documents = new ConcurrentHashMap<>();
@@ -128,6 +131,15 @@ public interface LinkValidator {
 
                 /* Find the fragment */
                 final Document doc = entry.document;
+
+                if (JAVADOC_FRAGMENT_CHARS.matcher(fragment).find()) {
+                    /* Those chars are illegal in CSS selectors, so Tagsoup will fail at parsing the selector */
+                    final String id = fragment.substring(1);
+                    if (doc.getElementById(id) != null) {
+                        return logAndReturn(uri, ValidationResult.valid(link));
+                    }
+                }
+
                 try {
                     Elements foundElems = doc.select(fragment);
                     if (foundElems.isEmpty()) {
@@ -140,7 +152,7 @@ public interface LinkValidator {
                         return logAndReturn(uri, result);
                     }
                 } catch (SelectorParseException e) {
-                    log.error("Bad fragment: fragment", e);
+                    log.error("Bad fragment: " + fragment + " in URI " + link.originalUri(), e);
                     throw e;
                 }
             } finally {
