@@ -33,7 +33,7 @@
         <jsoup.version>1.18.3</jsoup.version>
         <groovy-maven-plugin.version>2.1.1</groovy-maven-plugin.version>
         <groovy.version>3.0.23</groovy.version>
-        <quarkus.version>3.17.7</quarkus.version>
+        <quarkus.version>3.18.0</quarkus.version>
     </properties>
     <dependencyManagement>
         <dependencies>
