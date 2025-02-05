@@ -1,11 +1,13 @@
 package io.quarkiverse.antora;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import io.quarkus.runtime.RuntimeValue;
 import io.quarkus.runtime.annotations.Recorder;
-import io.quarkus.vertx.http.runtime.HttpBuildTimeConfig;
-import io.quarkus.vertx.http.runtime.HttpConfiguration;
+import io.quarkus.vertx.http.runtime.VertxHttpBuildTimeConfig;
+import io.quarkus.vertx.http.runtime.VertxHttpConfig;
 import io.vertx.core.Handler;
 import io.vertx.ext.web.RoutingContext;
 
@@ -16,14 +18,16 @@ import io.vertx.ext.web.RoutingContext;
 @Recorder
 public class WebBundlerResourceRecorder {
 
-    private final RuntimeValue<HttpConfiguration> httpConfiguration;
+    private final RuntimeValue<VertxHttpConfig> httpConfiguration;
     private final Set<String> compressMediaTypes;
 
-    public WebBundlerResourceRecorder(RuntimeValue<HttpConfiguration> httpConfiguration,
-            HttpBuildTimeConfig httpBuildTimeConfig) {
+    public WebBundlerResourceRecorder(RuntimeValue<VertxHttpConfig> httpConfiguration,
+            VertxHttpBuildTimeConfig httpBuildTimeConfig) {
         this.httpConfiguration = httpConfiguration;
-        if (httpBuildTimeConfig.enableCompression && httpBuildTimeConfig.compressMediaTypes.isPresent()) {
-            this.compressMediaTypes = Set.copyOf(httpBuildTimeConfig.compressMediaTypes.get());
+        final Optional<List<String>> compressMediaTypes;
+        if (httpBuildTimeConfig.enableCompression()
+                && (compressMediaTypes = httpBuildTimeConfig.compressMediaTypes()).isPresent()) {
+            this.compressMediaTypes = Set.copyOf(compressMediaTypes.get());
         } else {
             this.compressMediaTypes = Set.of();
         }
@@ -31,7 +35,8 @@ public class WebBundlerResourceRecorder {
 
     public Handler<RoutingContext> createHandler(final String directory,
             final Set<String> webResources, boolean devMode) {
-        final var handlerConfig = new WebBundlerHandlerConfig(httpConfiguration.getValue().staticResources.indexPage, devMode,
+        final var handlerConfig = new WebBundlerHandlerConfig(httpConfiguration.getValue().staticResources().indexPage(),
+                devMode,
                 compressMediaTypes);
         return new WebBundlerResourceHandler(handlerConfig, directory,
                 webResources);
