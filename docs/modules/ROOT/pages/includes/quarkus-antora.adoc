@@ -8,6 +8,10 @@ h|Type
 h|Default
 
 a|icon:lock[title=Fixed at build time] [[quarkus-antora_quarkus-antora-image]] [.property-path]##link:#quarkus-antora_quarkus-antora-image[`quarkus.antora.image`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++quarkus.antora.image+++[]
+endif::add-copy-button-to-config-props[]
+
 
 [.description]
 --
