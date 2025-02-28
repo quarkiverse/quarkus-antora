@@ -32,7 +32,7 @@
         <assertj.version>3.27.3</assertj.version>
         <jsoup.version>1.18.3</jsoup.version>
         <groovy-maven-plugin.version>2.1.1</groovy-maven-plugin.version>
-        <groovy.version>3.0.23</groovy.version>
+        <groovy.version>3.0.24</groovy.version>
         <quarkus.version>3.19.0</quarkus.version>
     </properties>
     <dependencyManagement>
