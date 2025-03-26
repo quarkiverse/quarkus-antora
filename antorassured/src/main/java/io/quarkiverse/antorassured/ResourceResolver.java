@@ -64,7 +64,7 @@ public interface ResourceResolver {
             final String baseUri = "http://"
                     + config.getOptionalValue("quarkus.http.test-host", String.class).orElse("localhost") + ":"
                     + config.getValue("quarkus.http.test-port", String.class)
-                    + "/" + module + "/" + version;
+                    + "/" + module + "/" + version + "/";
             return new ResourceResolverImpl(pagesSourceDir, siteBranchDir, attributes, baseUri, gitRepoRootDir);
         } catch (IOException e) {
             throw new RuntimeException("Could not read " + antoraYaml, e);
@@ -125,6 +125,12 @@ public interface ResourceResolver {
      */
     Path resolveLocal(Path relativeToBranchDirectory);
 
+    /**
+     * @return the URI of the {@code module/version} directory, something like {@code http://localhost:8081/quarkus-cxf/3.20/}
+     *         where {@code quarkus-cxf} is the module and {@code 3.20} is the version
+     */
+    URI getBaseUri();
+
     static class ResourceResolverImpl implements ResourceResolver {
         private static final Logger log = Logger.getLogger(ResourceResolver.class);
         private static final String FILE_ANTORA_PREFIX = "file:///antora";
@@ -133,7 +139,7 @@ public interface ResourceResolver {
         private final Path pagesSourceDir;
         private final Path siteBranchDir;
         private final Map<String, String> attributes;
-        private final String baseUri;
+        private final URI baseUri;
         private final Path gitRepoRootDir;
 
         public ResourceResolverImpl(Path pagesSourceDir, Path siteBranchDir, Map<String, String> attributes, String baseUri,
@@ -142,7 +148,7 @@ public interface ResourceResolver {
             this.pagesSourceDir = pagesSourceDir;
             this.siteBranchDir = siteBranchDir;
             this.attributes = attributes;
-            this.baseUri = baseUri;
+            this.baseUri = URI.create(baseUri);
             this.gitRepoRootDir = gitRepoRootDir;
         }
 
@@ -170,7 +176,7 @@ public interface ResourceResolver {
             } else {
 
                 final Path relativeToBasePath = siteBranchDir.relativize(file);
-                final URI fileUri = URI.create(baseUri + "/" + relativeToBasePath);
+                final URI fileUri = baseUri.resolve(relativeToBasePath.toString().replace('\\', '/'));
                 result = fileUri.resolve(linkHref).toString();
             }
             log.debugf("Resolved URI %s -> %s on page %s", linkHref, result, siteBranchDir.relativize(file));
@@ -180,6 +186,11 @@ public interface ResourceResolver {
         @Override
         public Path resolveLocal(Path relativeToBranchDirectory) {
             return siteBranchDir.resolve(relativeToBranchDirectory);
+        }
+
+        @Override
+        public URI getBaseUri() {
+            return baseUri;
         }
 
         static Map<String, String> findAttributes(Map<String, Object> yaml) {
