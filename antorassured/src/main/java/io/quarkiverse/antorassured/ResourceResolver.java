@@ -10,7 +10,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.eclipse.microprofile.config.Config;
@@ -48,10 +47,12 @@ public interface ResourceResolver {
         try {
             final String antoraYamlSource = Files.readString(antoraYaml, StandardCharsets.UTF_8);
 
-            final String module = ResourceResolverImpl.findKey(antoraYamlSource, "name");
-            final String version = ResourceResolverImpl.findKey(antoraYamlSource, "version");
+            final Map<String, Object> yaml = new Yaml().load(antoraYamlSource);
 
-            final Map<String, String> attributes = ResourceResolverImpl.findAttributes(antoraYamlSource);
+            final String module = ResourceResolverImpl.findKey(yaml, "name");
+            final String version = ResourceResolverImpl.findKey(yaml, "version");
+
+            final Map<String, String> attributes = ResourceResolverImpl.findAttributes(yaml);
 
             final Path siteBranchDir = baseDir.resolve("target/classes").resolve(WebBundlerResourceHandler.META_INF_ANTORA)
                     .resolve(module).resolve(version);
@@ -181,8 +182,7 @@ public interface ResourceResolver {
             return siteBranchDir.resolve(relativeToBranchDirectory);
         }
 
-        static Map<String, String> findAttributes(String antoraYamlSource) {
-            Map<String, Object> yaml = new Yaml().load(antoraYamlSource);
+        static Map<String, String> findAttributes(Map<String, Object> yaml) {
             Object adoc = yaml.get("asciidoc");
             Object attributes;
             Map<String, String> result = new LinkedHashMap<>();
@@ -194,13 +194,12 @@ public interface ResourceResolver {
             return Collections.unmodifiableMap(result);
         }
 
-        static String findKey(String antoraYaml, String key) {
-            Pattern pat = Pattern.compile(key + ": *([^\n]+)");
-            Matcher m = pat.matcher(antoraYaml);
-            if (m.find()) {
-                return m.group(1);
+        static String findKey(Map<String, Object> yaml, String key) {
+            final Object result = yaml.get(key);
+            if (!(result instanceof String)) {
+                throw new IllegalStateException("Could not find key " + key + " in " + yaml);
             }
-            throw new IllegalStateException("Could not find " + pat.pattern() + " in " + antoraYaml);
+            return (String) result;
         }
 
         static SourceLocation findSourceLocation(Link uri, Path absAdocPath, Map<String, String> attributes) {
