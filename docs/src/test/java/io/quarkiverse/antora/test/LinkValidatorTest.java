@@ -15,9 +15,11 @@ import io.quarkiverse.antorassured.LinkValidator;
 import io.quarkiverse.antorassured.ResourceResolver;
 import io.quarkiverse.antorassured.SourceLocation;
 import io.quarkiverse.antorassured.ValidationResult;
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
+@QuarkusTestResource(TestRemoteServerResource.class)
 public class LinkValidatorTest {
 
     @Test
@@ -48,7 +50,7 @@ public class LinkValidatorTest {
 
         ValidationResult err = testErrors.get("https://quarkus.io/fake-page");
         Assertions.assertThat(err.uri().resolvedUri()).isEqualTo("https://quarkus.io/fake-page");
-        Assertions.assertThat(err.message()).isEqualTo("404");
+        Assertions.assertThat(err.message()).isEqualTo("404 Not Found");
 
         err = testErrors.get("https://quarkus.io/guides/building-native-image#fake-fragment");
         Assertions.assertThat(err.uri().resolvedUri())
@@ -87,7 +89,7 @@ public class LinkValidatorTest {
 
         Link link = Link.ofResolved("https://quarkus.io/version/3.15/guides/getting-started");
         final SourceLocation loc = sourceMapper.findSource(link, testHtml);
-        Assertions.assertThat(loc.lineNumber()).isEqualTo(21);
+        Assertions.assertThat(loc.lineNumber()).isEqualTo(25);
         Assertions.assertThat(loc.file()).asString().endsWith("test-page.adoc");
 
     }

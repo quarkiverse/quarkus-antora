@@ -41,9 +41,16 @@ public class AntoraSiteTest {
                         "https://salkjasjhashgajhhsahgahjas.com",
                         "https://quarkus.io/fake-page",
                         "https://quarkus.io/guides/building-native-image#fake-fragment",
+                        "http://localhost:8083/retry-me",
                         /* When running this test, the port is 8081, so the following link is not expected to work */
                         "http://localhost:8080/quarkus-antora/dev/index.html")
                 .excludeEditThisPage()
+                /*
+                 * Retry once (default) in case of HTTP status 301, 429, 500, 501, 502, 503
+                 * or 504, after 10 seconds or what the Retry-After HTTP header prescribes,
+                 * but at most 120 seconds
+                 */
+                .retryAttempts(1)
                 .validate()
                 .assertValid();
     }

@@ -10,14 +10,16 @@ import java.util.concurrent.TimeUnit;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.hamcrest.CoreMatchers;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
 
-import io.quarkus.logging.Log;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.ValidatableResponse;
 
 public class AntoraDevModeTest {
+
+    private static final Logger log = Logger.getLogger(AntoraDevModeTest.class);
 
     @Test
     public void edit() throws InterruptedException, IOException {
@@ -39,7 +41,7 @@ public class AntoraDevModeTest {
                             }
                         },
                         resp -> {
-                            Log.info("resp " + (resp != null ? resp.extract().statusCode() : ""));
+                            log.info("resp " + (resp != null ? resp.extract().statusCode() : ""));
                             return resp != null && resp.extract().statusCode() == 200;
                         });
                 response

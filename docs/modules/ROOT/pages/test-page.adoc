@@ -15,6 +15,10 @@ Some invalid links:
 * https://quarkus.io/fake-page[404]
 * https://quarkus.io/guides/building-native-image#fake-fragment[bad fragment]
 
+A link that works after retry
+
+* http://localhost:8083/retry-me[Retry me]
+
 Some valid links:
 
 * https://quarkus.io/guides/building-native-image#prerequisites[good fragment]
