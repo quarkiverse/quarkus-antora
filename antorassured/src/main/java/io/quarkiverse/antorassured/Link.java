@@ -106,11 +106,13 @@ public class Link implements Comparable<Link> {
 
     @Override
     public String toString() {
-        return originalUri + " -> " + resolvedUri + " on " + occurrences + "]";
+        return (originalUri.equals(resolvedUri) ? originalUri : (originalUri + " -> " + resolvedUri)) + " on [" + occurrences
+                + "]";
     }
 
     /**
      * Appends {@link #originalUri} and {@link #resolvedUri} delimited by {@code " -> "} to the given {@code stringBuilder}
+     * if the two differ; otherwise appends only {@link #originalUri}.
      *
      * @param stringBuilder where to append the short representation of this {@link Link}
      * @return the given {@code stringBuilder}
@@ -118,7 +120,10 @@ public class Link implements Comparable<Link> {
      * @since 1.0.0
      */
     public StringBuilder toShortString(StringBuilder stringBuilder) {
-        stringBuilder.append(originalUri).append(" -> ").append(resolvedUri);
+        stringBuilder.append(originalUri);
+        if (!originalUri.equals(resolvedUri)) {
+            stringBuilder.append(" -> ").append(resolvedUri);
+        }
         return stringBuilder;
     }
 

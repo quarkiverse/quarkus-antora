@@ -96,7 +96,7 @@ public class AntorAssured {
         final Stream<Link> links = result.entrySet()
                 .parallelStream()
                 .map(en -> en.getKey().withOccurrences(en.getValue()));
-        return new LinkStream(links, resourceResolver);
+        return new LinkStream(links, resourceResolver, 1);
     }
 
     private static Stream<Path> listHtmlFiles(Path path) {

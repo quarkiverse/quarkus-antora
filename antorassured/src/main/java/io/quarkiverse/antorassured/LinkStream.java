@@ -1,11 +1,18 @@
 package io.quarkiverse.antorassured;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
+import java.util.ListIterator;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+
+import org.jboss.logging.Logger;
 
 /**
  * A stream of {@link Link}s.
@@ -13,13 +20,16 @@ import java.util.stream.Stream;
  * @since 1.0.0
  */
 public class LinkStream {
+    private static final Logger log = Logger.getLogger(AntorAssured.class);
     private final Stream<Link> links;
     private final ResourceResolver resourceResolver;
+    private final int retryAttempts;
 
-    LinkStream(Stream<Link> links, ResourceResolver resourceResolver) {
+    LinkStream(Stream<Link> links, ResourceResolver resourceResolver, int retryAttempts) {
         super();
         this.links = links;
         this.resourceResolver = resourceResolver;
+        this.retryAttempts = retryAttempts;
     }
 
     /**
@@ -39,7 +49,8 @@ public class LinkStream {
     public LinkStream log() {
         return new LinkStream(
                 links.peek(link -> AntorAssured.log.info(link)),
-                resourceResolver);
+                resourceResolver,
+                retryAttempts);
     }
 
     /**
@@ -60,7 +71,7 @@ public class LinkStream {
      * @since 1.0.0
      */
     public LinkStream exclude(Predicate<Link> exclude) {
-        return new LinkStream(links.filter(link -> !exclude.test(link)), resourceResolver);
+        return new LinkStream(links.filter(link -> !exclude.test(link)), resourceResolver, retryAttempts);
     }
 
     /**
@@ -72,7 +83,8 @@ public class LinkStream {
      * @since 1.0.0
      */
     public LinkStream excludeResolved(Pattern exclude) {
-        return new LinkStream(links.filter(link -> !exclude.matcher(link.resolvedUri()).matches()), resourceResolver);
+        return new LinkStream(links.filter(link -> !exclude.matcher(link.resolvedUri()).matches()), resourceResolver,
+                retryAttempts);
     }
 
     /**
@@ -98,7 +110,7 @@ public class LinkStream {
      * @since 1.0.0
      */
     public LinkStream excludeResolved(Collection<String> excludes) {
-        return new LinkStream(links.filter(link -> !excludes.contains(link.resolvedUri())), resourceResolver);
+        return new LinkStream(links.filter(link -> !excludes.contains(link.resolvedUri())), resourceResolver, retryAttempts);
     }
 
     /**
@@ -109,7 +121,20 @@ public class LinkStream {
      * @since 1.0.0
      */
     public LinkStream includeResolved(Pattern include) {
-        return new LinkStream(links.filter(link -> include.matcher(link.resolvedUri()).matches()), resourceResolver);
+        return new LinkStream(links.filter(link -> include.matcher(link.resolvedUri()).matches()), resourceResolver,
+                retryAttempts);
+    }
+
+    /**
+     * @param retryAttempts how many times it should be re-tried to retrieve a remote link, in case it responds with HTTP
+     *        301, 429, 500, 501, 502, 503 or 504. If not set the default is one retry attempt after 10 seconds or what
+     *        the {@code Retry-After} HTTP header prescribes, but at most 120 seconds.
+     * @return a new {@link LinkStream} with {@link #retryAttempts} reset to the given value
+     *
+     * @since 1.3.0
+     */
+    public LinkStream retryAttempts(int retryAttempts) {
+        return new LinkStream(links, resourceResolver, retryAttempts);
     }
 
     /**
@@ -128,10 +153,48 @@ public class LinkStream {
      * @since 1.0.0
      */
     public ValidationErrorStream validate(LinkValidator validator) {
+        final List<ValidationResult> invalidWithouRetry = new ArrayList<>();
+        final List<ValidationResult> invalidWithRetry = new ArrayList<>();
+        links
+                .map(validator::validate)
+                .filter(ValidationResult::isInvalid)
+                .forEach(result -> {
+                    (result.shouldRetry() ? invalidWithRetry : invalidWithouRetry).add(result);
+                });
+
+        if (!invalidWithRetry.isEmpty() && retryAttempts > 0) {
+            /* sort the retries by retry time */
+            Collections.sort(invalidWithRetry, Comparator.comparing(ValidationResult::retryAtSystemTimeMs));
+
+            /* Retry */
+            for (int attempt = 2; attempt <= retryAttempts + 1; attempt++) {
+                final ListIterator<ValidationResult> it = invalidWithRetry.listIterator();
+                while (it.hasNext()) {
+                    final ValidationResult oldResult = it.next();
+                    final long delay = oldResult.retryAtSystemTimeMs() - System.currentTimeMillis();
+                    if (delay > 0L) {
+                        try {
+                            log.infof("Sleeping %d ms to retry %s", delay, oldResult);
+                            Thread.sleep(delay);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    final ValidationResult newResult = validator.validate(oldResult.uri(), attempt);
+                    if (newResult.isValid()) {
+                        it.remove();
+                    } else if (newResult.shouldRetry()) {
+                        it.set(newResult);
+                    } else {
+                        it.remove();
+                        invalidWithRetry.add(newResult);
+                    }
+                }
+            }
+        }
         return new ValidationErrorStream(
-                links
-                        .map(validator::validate)
-                        .filter(ValidationResult::isInvalid),
+                Stream.concat(invalidWithouRetry.stream(), invalidWithRetry.stream()),
                 resourceResolver);
     }
 }
