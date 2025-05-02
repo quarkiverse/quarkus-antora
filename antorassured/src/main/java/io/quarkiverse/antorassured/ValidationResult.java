@@ -95,7 +95,9 @@ public final class ValidationResult {
         } else {
             result.append(": ");
             if (shouldRetry()) {
-                result.append("(retry at " + retryAtSystemTimeMs + ", attempted " + attempt + " times) ");
+                result.append(
+                        "(retry in " + ((retryAtSystemTimeMs - System.currentTimeMillis()) / 1000) + " seconds, attempted "
+                                + attempt + " times) ");
             }
             result
                     .append(message);
