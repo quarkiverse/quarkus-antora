@@ -189,8 +189,10 @@ public interface LinkValidator {
                         case 502:
                         case 503:
                         case 504:
-                            final long retryAtSystemTimeMs = parseRetryAfter(resp.header("Retry-After"), Clock.systemUTC());
-                            return CacheEntry.retry(resp.statusCode(), resp.statusMessage(), retryAtSystemTimeMs, attempt);
+                            final String rawRetryAfter = resp.header("Retry-After");
+                            final long retryAtSystemTimeMs = parseRetryAfter(rawRetryAfter, Clock.systemUTC());
+                            return CacheEntry.retry(resp.statusCode(),
+                                    resp.statusMessage() + " with Retry-After: " + rawRetryAfter, retryAtSystemTimeMs, attempt);
                         default:
                             return CacheEntry.invalid("" + resp.statusCode() + " " + resp.statusMessage());
                     }
