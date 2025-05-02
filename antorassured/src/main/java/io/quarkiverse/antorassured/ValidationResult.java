@@ -13,14 +13,15 @@ public final class ValidationResult {
     private final Link uri;
     private final String message;
     private final long retryAtSystemTimeMs;
-    private final int attempt;
+    private final int attemptsPerformed;
+    private final int maxAttempts;
 
     /**
      * @param link that was validated
      * @return a new valid {@link ValidationResult}
      */
     public static ValidationResult valid(Link link) {
-        return new ValidationResult(link, null, NO_RETRY, NO_RETRY);
+        return new ValidationResult(link, null, NO_RETRY, NO_RETRY, 0);
     }
 
     /**
@@ -29,24 +30,28 @@ public final class ValidationResult {
      * @return a new invalid {@link ValidationResult} without {@link #retryAtSystemTimeMs} set
      */
     public static ValidationResult invalid(Link link, String message) {
-        return new ValidationResult(link, message, NO_RETRY, NO_RETRY);
+        return new ValidationResult(link, message, NO_RETRY, NO_RETRY, 0);
     }
 
     /**
      * @param link that was validated
      * @param message the error message describing the validation failure
      * @param retryAtSystemTimeMs a system time in milliseconds when a new attempt to get the resource may be performed
+     * @param attemptsPerformed the ordinary of this attempt; first attempt has {@code attemptsPerformed} {@code 0}
+     * @param maxAttempts how many attempts (past + future) can performed to validate the given {@code uri}
      * @return a new invalid {@link ValidationResult} with {@link #retryAtSystemTimeMs} set
      */
-    public static ValidationResult retry(Link link, String message, long retryAtSystemTimeMs, int attempt) {
-        return new ValidationResult(link, message, retryAtSystemTimeMs, attempt);
+    public static ValidationResult retry(Link link, String message, long retryAtSystemTimeMs, int attemptsPerformed,
+            int maxAttempts) {
+        return new ValidationResult(link, message, retryAtSystemTimeMs, attemptsPerformed, maxAttempts);
     }
 
-    ValidationResult(Link uri, String message, long retryAtSystemTimeMs, int attempt) {
+    ValidationResult(Link uri, String message, long retryAtSystemTimeMs, int attemptsPerformed, int maxAttempts) {
         this.uri = uri;
         this.message = message;
         this.retryAtSystemTimeMs = retryAtSystemTimeMs;
-        this.attempt = attempt;
+        this.attemptsPerformed = attemptsPerformed;
+        this.maxAttempts = maxAttempts;
     }
 
     public Link uri() {
@@ -97,7 +102,7 @@ public final class ValidationResult {
             if (shouldRetry()) {
                 result.append(
                         "(retry in " + ((retryAtSystemTimeMs - System.currentTimeMillis()) / 1000) + " seconds, attempted "
-                                + attempt + " times) ");
+                                + attemptsPerformed + " times) ");
             }
             result
                     .append(message);
@@ -107,7 +112,7 @@ public final class ValidationResult {
     }
 
     boolean shouldRetry() {
-        return retryAtSystemTimeMs != NO_RETRY;
+        return retryAtSystemTimeMs != NO_RETRY && attemptsPerformed != NO_RETRY && attemptsPerformed < maxAttempts;
     }
 
     long retryAtSystemTimeMs() {
@@ -115,6 +120,6 @@ public final class ValidationResult {
     }
 
     int attempt() {
-        return attempt;
+        return attemptsPerformed;
     }
 }

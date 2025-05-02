@@ -7,7 +7,9 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,12 +18,15 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 
 import org.jboss.logging.Logger;
+import org.jsoup.Connection;
 import org.jsoup.Connection.Method;
 import org.jsoup.Connection.Response;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 import org.jsoup.select.Selector.SelectorParseException;
+
+import io.quarkiverse.antorassured.LinkStream.RateLimitEntry;
 
 /**
  * A validator of web links.
@@ -30,8 +35,27 @@ import org.jsoup.select.Selector.SelectorParseException;
  */
 public interface LinkValidator {
 
+    /**
+     * @return {@code new LinkValidatorImpl(new ArrayList<>(), 1)}
+     * @deprecated use {@link LinkValidatorImpl#LinkValidatorImpl(List, int)}
+     */
     public static LinkValidator defaultValidator() {
-        return new LinkValidatorImpl();
+        return new LinkValidatorImpl(new ArrayList<>(), 2);
+    }
+
+    /**
+     * Checks whether the give URI is valid, typically by accessing the given HTTP resource, and returns the
+     * {@link ValidationResult}.
+     *
+     * @param link the {@link Link} to check
+     * @param attempt ignored since 1.4.0
+     * @return the result of the validation
+     *
+     * @since 1.3.0
+     * @deprecated Use {@link #validate(Link)} instead
+     */
+    default ValidationResult validate(Link link, int attempt) {
+        return validate(link);
     }
 
     /**
@@ -43,21 +67,7 @@ public interface LinkValidator {
      *
      * @since 1.0.0
      */
-    default ValidationResult validate(Link link) {
-        return validate(link, 1);
-    }
-
-    /**
-     * Checks whether the give URI is valid, typically by accessing the given HTTP resource, and returns the
-     * {@link ValidationResult}.
-     *
-     * @param link the {@link Link} to check
-     * @param attempt the attempt number, the first attempt is {@code 1}
-     * @return the result of the validation
-     *
-     * @since 1.3.0
-     */
-    ValidationResult validate(Link link, int attempt);
+    ValidationResult validate(Link link);
 
     static class LinkValidatorImpl implements LinkValidator {
         private static final Logger log = Logger.getLogger(AntorAssured.class);
@@ -67,8 +77,10 @@ public interface LinkValidator {
 
         private static final Pattern JAVADOC_FRAGMENT_CHARS = Pattern.compile("[\\(\\)\\,\\.]");
 
-        static final long RETRY_AFTER_DEFAULT = 10_000L;
+        static final long RETRY_AFTER_DEFAULT = 60_000L;
         static final long RETRY_AFTER_MAX = 120_000L;
+
+        private final Connection jsoupSession = Jsoup.newSession();
 
         /** JSoup documents by fragment-less URI */
         private final Map<String, CacheEntry> documents = new ConcurrentHashMap<>();
@@ -80,8 +92,16 @@ public interface LinkValidator {
         /** Locks by URI, possibly with a fragment */
         private final Map<String, Lock> messageLocks = new HashMap<>();
 
+        private final List<RateLimitEntry> rateLimits;
+        private final int maxAttempts;
+
+        public LinkValidatorImpl(List<RateLimitEntry> rateLimits, int maxAttempts) {
+            this.rateLimits = rateLimits;
+            this.maxAttempts = maxAttempts;
+        }
+
         @Override
-        public ValidationResult validate(Link link, int attempt) {
+        public ValidationResult validate(Link link) {
             final String uri = link.resolvedUri();
 
             log.debugf("Validating %s", uri);
@@ -93,7 +113,7 @@ public interface LinkValidator {
             messageLock.lock();
             try {
                 final ValidationResult cached = errorMessages.get(uri);
-                if (cached != null && (!cached.shouldRetry() || cached.attempt() >= attempt)) {
+                if (cached != null && !cached.shouldRetry()) {
                     return cached;
                 }
 
@@ -109,13 +129,19 @@ public interface LinkValidator {
 
                 final Lock fragmentLessLock;
                 synchronized (documentLocks) {
-                    fragmentLessLock = documentLocks.computeIfAbsent(uri, k -> new ReentrantLock());
+                    fragmentLessLock = documentLocks.computeIfAbsent(fragmentLessUri, k -> new ReentrantLock());
                 }
                 fragmentLessLock.lock();
                 try {
+                    final long delay = evalRateLimits(fragmentLessUri);
+                    if (delay > 0L) {
+                        return logAndReturn(uri,
+                                ValidationResult.retry(link, "Delayed " + delay + " ms due to a rate limit",
+                                        System.currentTimeMillis() + delay, 0, Integer.MAX_VALUE));
+                    }
                     entry = documents.compute(fragmentLessUri, (k, v) -> {
-                        if (v == null || (!v.isValid() && attempt > v.attempt)) {
-                            return fetch(k, attempt);
+                        if (v == null || v.shouldRetry()) {
+                            return fetch(jsoupSession, k, v == null ? 1 : (v.attempt + 1));
                         } else {
                             return v;
                         }
@@ -126,7 +152,7 @@ public interface LinkValidator {
 
                 if (!entry.isValid()) {
                     return logAndReturn(uri,
-                            ValidationResult.retry(link, entry.message, entry.retryAtSystemTimeMs, entry.attempt));
+                            ValidationResult.retry(link, entry.message, entry.retryAtSystemTimeMs, entry.attempt, maxAttempts));
                 }
 
                 /* No fragment */
@@ -171,11 +197,21 @@ public interface LinkValidator {
 
         }
 
-        static CacheEntry fetch(final String uri, int attempt) {
+        private long evalRateLimits(String fragmentLessUri) {
+            for (RateLimitEntry rateLimitEntry : rateLimits) {
+                if (rateLimitEntry.pattern().matcher(fragmentLessUri).matches()) {
+                    return rateLimitEntry.rateLimit().scheduleInMilliseconds(rateLimitEntry.pattern().pattern());
+                }
+            }
+            return 0L;
+        }
+
+        static CacheEntry fetch(final Connection jsoupSession, final String uri, int attempt) {
             {
                 try {
-                    final Response resp = Jsoup
-                            .connect(uri)
+
+                    final Response resp = jsoupSession
+                            .newRequest(uri)
                             .method(Method.GET)
                             .ignoreHttpErrors(true)
                             .execute();
@@ -192,7 +228,8 @@ public interface LinkValidator {
                             final String rawRetryAfter = resp.header("Retry-After");
                             final long retryAtSystemTimeMs = parseRetryAfter(rawRetryAfter, Clock.systemUTC());
                             return CacheEntry.retry(resp.statusCode(),
-                                    resp.statusMessage() + " with Retry-After: " + rawRetryAfter, retryAtSystemTimeMs, attempt);
+                                    resp.statusMessage() + ", Retry-After: " + rawRetryAfter,
+                                    retryAtSystemTimeMs, attempt);
                         default:
                             return CacheEntry.invalid("" + resp.statusCode() + " " + resp.statusMessage());
                     }
