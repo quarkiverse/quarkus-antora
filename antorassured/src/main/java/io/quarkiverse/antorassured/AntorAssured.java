@@ -8,6 +8,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -96,7 +97,7 @@ public class AntorAssured {
         final Stream<Link> links = result.entrySet()
                 .parallelStream()
                 .map(en -> en.getKey().withOccurrences(en.getValue()));
-        return new LinkStream(links, resourceResolver, 1);
+        return new LinkStream(links, resourceResolver, 1, new ArrayList<>(), 30_000L);
     }
 
     private static Stream<Path> listHtmlFiles(Path path) {
