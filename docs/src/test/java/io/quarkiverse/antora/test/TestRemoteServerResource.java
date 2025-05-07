@@ -56,12 +56,12 @@ public class TestRemoteServerResource implements QuarkusTestResourceLifecycleMan
     public Map<String, String> start() {
         final Vertx vertx = Vertx.vertx();
 
-        final AtomicInteger reqCounter = new AtomicInteger();
-
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
+
+        final AtomicInteger retryCounter = new AtomicInteger();
         router.get("/retry-me").handler(context -> {
-            boolean return503 = reqCounter.getAndIncrement() % 2 == 0;
+            boolean return503 = retryCounter.getAndIncrement() % 2 == 0;
             context.response()
                     .setStatusCode(return503 ? 503 : 200)
                     .putHeader(return503 ? "Retry-After" : "X-Foo", "2")

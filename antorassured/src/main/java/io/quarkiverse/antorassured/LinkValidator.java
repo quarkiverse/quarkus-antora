@@ -7,9 +7,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,7 +24,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 import org.jsoup.select.Selector.SelectorParseException;
 
-import io.quarkiverse.antorassured.LinkStream.RateLimitEntry;
+import io.quarkiverse.antorassured.LinkStream.LinkGroup;
 
 /**
  * A validator of web links.
@@ -37,37 +35,23 @@ public interface LinkValidator {
 
     /**
      * @return {@code new LinkValidatorImpl(new ArrayList<>(), 1)}
-     * @deprecated use {@link LinkValidatorImpl#LinkValidatorImpl(List, int)}
+     *
+     * @since 1.0.0
      */
     public static LinkValidator defaultValidator() {
-        return new LinkValidatorImpl(new ArrayList<>(), 2);
+        return new LinkValidatorImpl();
     }
 
     /**
      * Checks whether the give URI is valid, typically by accessing the given HTTP resource, and returns the
      * {@link ValidationResult}.
      *
-     * @param link the {@link Link} to check
-     * @param attempt ignored since 1.4.0
-     * @return the result of the validation
-     *
-     * @since 1.3.0
-     * @deprecated Use {@link #validate(Link)} instead
-     */
-    default ValidationResult validate(Link link, int attempt) {
-        return validate(link);
-    }
-
-    /**
-     * Checks whether the give URI is valid, typically by accessing the given HTTP resource, and returns the
-     * {@link ValidationResult}.
-     *
-     * @param link the {@link Link} to check
+     * @param request wraps the {@link Link} to check
      * @return the result of the validation
      *
      * @since 1.0.0
      */
-    ValidationResult validate(Link link);
+    ValidationResult validate(ValidationRequest request);
 
     static class LinkValidatorImpl implements LinkValidator {
         private static final Logger log = Logger.getLogger(AntorAssured.class);
@@ -92,16 +76,12 @@ public interface LinkValidator {
         /** Locks by URI, possibly with a fragment */
         private final Map<String, Lock> messageLocks = new HashMap<>();
 
-        private final List<RateLimitEntry> rateLimits;
-        private final int maxAttempts;
-
-        public LinkValidatorImpl(List<RateLimitEntry> rateLimits, int maxAttempts) {
-            this.rateLimits = rateLimits;
-            this.maxAttempts = maxAttempts;
+        public LinkValidatorImpl() {
         }
 
         @Override
-        public ValidationResult validate(Link link) {
+        public ValidationResult validate(ValidationRequest req) {
+            final Link link = req.link();
             final String uri = link.resolvedUri();
 
             log.debugf("Validating %s", uri);
@@ -133,10 +113,11 @@ public interface LinkValidator {
                 }
                 fragmentLessLock.lock();
                 try {
-                    final long delay = evalRateLimits(fragmentLessUri);
+                    final LinkGroup group = req.group();
+                    final long delay = group.rateLimit().scheduleInMilliseconds(group.pattern().pattern());
                     if (delay > 0L) {
                         return logAndReturn(uri,
-                                ValidationResult.retry(link, "Delayed " + delay + " ms due to a rate limit",
+                                ValidationResult.retry(link, -429, "Delayed " + delay + " ms due to a rate limit",
                                         System.currentTimeMillis() + delay, 0, Integer.MAX_VALUE));
                     }
                     entry = documents.compute(fragmentLessUri, (k, v) -> {
@@ -150,19 +131,22 @@ public interface LinkValidator {
                     fragmentLessLock.unlock();
                 }
 
+                req.group().stats().recordStatus(entry.statusCode);
+
                 if (!entry.isValid()) {
                     return logAndReturn(uri,
-                            ValidationResult.retry(link, entry.message, entry.retryAtSystemTimeMs, entry.attempt, maxAttempts));
+                            ValidationResult.retry(link, entry.statusCode, entry.message, entry.retryAtSystemTimeMs,
+                                    entry.attempt, req.maxAttempts()));
                 }
 
                 /* No fragment */
                 if (fragment == null || "#".equals(fragment)) {
-                    return logAndReturn(uri, ValidationResult.valid(link));
+                    return logAndReturn(uri, ValidationResult.valid(link, entry.statusCode));
                 }
 
                 if (fragment.startsWith("#L") && uri.startsWith("https://github.com/")) {
                     /* GitHub line fragments do not exist in the DOM - consider them valid */
-                    return logAndReturn(uri, ValidationResult.valid(link));
+                    return logAndReturn(uri, ValidationResult.valid(link, entry.statusCode));
                 }
 
                 /* Find the fragment */
@@ -172,7 +156,7 @@ public interface LinkValidator {
                     /* Those chars are illegal in CSS selectors, so Tagsoup will fail at parsing the selector */
                     final String id = fragment.substring(1);
                     if (doc.getElementById(id) != null) {
-                        return logAndReturn(uri, ValidationResult.valid(link));
+                        return logAndReturn(uri, ValidationResult.valid(link, entry.statusCode));
                     }
                 }
 
@@ -182,9 +166,10 @@ public interface LinkValidator {
                         foundElems = doc.select("a[name=\"" + fragment.substring(1) + "\"]");
                     }
                     if (!foundElems.isEmpty()) {
-                        return logAndReturn(uri, ValidationResult.valid(link));
+                        return logAndReturn(uri, ValidationResult.valid(link, entry.statusCode));
                     } else {
-                        final ValidationResult result = ValidationResult.invalid(link, "Could not find " + fragment);
+                        final ValidationResult result = ValidationResult.invalid(link, entry.statusCode,
+                                "Could not find " + fragment);
                         return logAndReturn(uri, result);
                     }
                 } catch (SelectorParseException e) {
@@ -197,15 +182,6 @@ public interface LinkValidator {
 
         }
 
-        private long evalRateLimits(String fragmentLessUri) {
-            for (RateLimitEntry rateLimitEntry : rateLimits) {
-                if (rateLimitEntry.pattern().matcher(fragmentLessUri).matches()) {
-                    return rateLimitEntry.rateLimit().scheduleInMilliseconds(rateLimitEntry.pattern().pattern());
-                }
-            }
-            return 0L;
-        }
-
         static CacheEntry fetch(final Connection jsoupSession, final String uri, int attempt) {
             {
                 try {
@@ -215,9 +191,10 @@ public interface LinkValidator {
                             .method(Method.GET)
                             .ignoreHttpErrors(true)
                             .execute();
-                    switch (resp.statusCode()) {
+                    final int statusCode = resp.statusCode();
+                    switch (statusCode) {
                         case 200:
-                            return CacheEntry.valid(resp.parse());
+                            return CacheEntry.valid(statusCode, resp.parse());
                         case 301:
                         case 429:
                         case 500:
@@ -227,23 +204,23 @@ public interface LinkValidator {
                         case 504:
                             final String rawRetryAfter = resp.header("Retry-After");
                             final long retryAtSystemTimeMs = parseRetryAfter(rawRetryAfter, Clock.systemUTC());
-                            return CacheEntry.retry(resp.statusCode(),
+                            return CacheEntry.retry(statusCode,
                                     resp.statusMessage() + ", Retry-After: " + rawRetryAfter,
                                     retryAtSystemTimeMs, attempt);
                         default:
-                            return CacheEntry.invalid("" + resp.statusCode() + " " + resp.statusMessage());
+                            return CacheEntry.invalid(statusCode, "" + statusCode + " " + resp.statusMessage());
                     }
                 } catch (java.net.ConnectException e) {
-                    return CacheEntry.invalid("Unable to connect: " + e.getMessage());
+                    return CacheEntry.invalid(-1, "Unable to connect: " + e.getMessage());
                 } catch (java.net.UnknownHostException e) {
-                    return CacheEntry.invalid("Unknown host " + e.getMessage());
+                    return CacheEntry.invalid(-2, "Unknown host " + e.getMessage());
                 } catch (org.jsoup.HttpStatusException e) {
-                    return CacheEntry.invalid("" + e.getStatusCode());
+                    return CacheEntry.invalid(e.getStatusCode(), "" + e.getStatusCode());
                 } catch (Exception e) {
                     StringWriter sw = new StringWriter();
                     PrintWriter pw = new PrintWriter(sw);
                     e.printStackTrace(pw);
-                    return CacheEntry.invalid(sw.toString());
+                    return CacheEntry.invalid(-3, sw.toString());
                 }
             }
         }
@@ -277,19 +254,19 @@ public interface LinkValidator {
             return result;
         }
 
-        record CacheEntry(String message, Document document, long retryAtSystemTimeMs, int attempt) {
+        record CacheEntry(String message, int statusCode, Document document, long retryAtSystemTimeMs, int attempt) {
 
             private static final int NO_RETRY = -1;
             static CacheEntry retry(int statusCode, String statusMessage, long retryAtSystemTimeMs, int attempt) {
-                return new CacheEntry("" + statusCode + " " + statusMessage, null, retryAtSystemTimeMs, attempt);
+                return new CacheEntry("" + statusCode + " " + statusMessage, statusCode, null, retryAtSystemTimeMs, attempt);
             }
 
-            static CacheEntry valid(Document document) {
-                return new CacheEntry(null, document, NO_RETRY, NO_RETRY);
+            static CacheEntry valid(int statusCode, Document document) {
+                return new CacheEntry(null, statusCode, document, NO_RETRY, NO_RETRY);
             }
 
-            static CacheEntry invalid(String message) {
-                return new CacheEntry(message, null, NO_RETRY, NO_RETRY);
+            static CacheEntry invalid(int statusCode, String message) {
+                return new CacheEntry(message, statusCode, null, NO_RETRY, NO_RETRY);
             }
 
             public boolean isValid() {

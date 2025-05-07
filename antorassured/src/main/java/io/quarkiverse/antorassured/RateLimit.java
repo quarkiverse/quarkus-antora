@@ -4,6 +4,8 @@ import java.time.Clock;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.jboss.logging.Logger;
+
 /**
  * A rate limit for deciding when a request to some specific URI can be scheduled.
  *
@@ -27,6 +29,7 @@ public interface RateLimit {
     long scheduleInMilliseconds(String uri);
 
     static class RequestsPerTimeRateLimit implements RateLimit {
+        private static final Logger log = Logger.getLogger(AntorAssured.class);
 
         RequestsPerTimeRateLimit(int requestCountLimit, long resetIntervalMillis, Clock clock) {
             super();
@@ -69,5 +72,9 @@ public interface RateLimit {
                 timestamp = clock.millis();
             }
         }
+    }
+
+    static RateLimit none() {
+        return s -> 0L;
     }
 }

@@ -8,7 +8,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -20,8 +19,6 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
-import io.quarkiverse.antora.WebBundlerResourceHandler;
-
 /**
  * A utility for testing the generated Antora sites.
  *
@@ -30,6 +27,7 @@ import io.quarkiverse.antora.WebBundlerResourceHandler;
 public class AntorAssured {
 
     static final Logger log = Logger.getLogger(AntorAssured.class);
+    static final String META_INF_ANTORA = "META-INF/antora";
 
     private AntorAssured() {
     }
@@ -40,7 +38,7 @@ public class AntorAssured {
      * @since 1.0.0
      */
     public static Stream<Path> htmlResources() {
-        String basePath = WebBundlerResourceHandler.META_INF_ANTORA;
+        String basePath = META_INF_ANTORA;
         try {
             URI uri = Thread.currentThread().getContextClassLoader().getResource(basePath).toURI();
             if ("jar".equals(uri.getScheme())) {
@@ -97,7 +95,7 @@ public class AntorAssured {
         final Stream<Link> links = result.entrySet()
                 .parallelStream()
                 .map(en -> en.getKey().withOccurrences(en.getValue()));
-        return new LinkStream(links, resourceResolver, 1, new ArrayList<>(), 30_000L);
+        return new LinkStream(links, resourceResolver, 1, 30_000L);
     }
 
     private static Stream<Path> listHtmlFiles(Path path) {

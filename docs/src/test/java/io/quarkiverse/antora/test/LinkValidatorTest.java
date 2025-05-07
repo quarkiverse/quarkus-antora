@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 
 import io.quarkiverse.antorassured.AntorAssured;
 import io.quarkiverse.antorassured.Link;
-import io.quarkiverse.antorassured.LinkValidator;
 import io.quarkiverse.antorassured.ResourceResolver;
 import io.quarkiverse.antorassured.SourceLocation;
 import io.quarkiverse.antorassured.ValidationResult;
@@ -24,7 +23,6 @@ public class LinkValidatorTest {
 
     @Test
     public void invalidExternalLinks() {
-        final LinkValidator validator = LinkValidator.defaultValidator();
 
         final Map<String, ValidationResult> testErrors = new TreeMap<>();
         final String errors = AntorAssured
@@ -61,18 +59,6 @@ public class LinkValidatorTest {
         err = testErrors.get("https://salkjasjhashgajhhsahgahjas.com");
         Assertions.assertThat(err.uri().resolvedUri()).isEqualTo("https://salkjasjhashgajhhsahgahjas.com");
         Assertions.assertThat(err.message()).isEqualTo("Unknown host salkjasjhashgajhhsahgahjas.com");
-
-        validator.validate(Link.ofResolved("https://quarkus.io/guides/building-native-image#prerequisites")).assertValid();
-
-        validator.validate(
-                Link.ofResolved(
-                        "http://docs.oasis-open.org/ws-sx/ws-securitypolicy/v1.2/errata01/os/ws-securitypolicy-1.2-errata01-os-complete.html#_Toc325572744"))
-                .assertValid();
-
-        validator.validate(
-                Link.ofResolved(
-                        "https://github.com/quarkiverse/quarkus-cxf/blob/3.15/integration-tests/ws-rm-client/src/test/java/io/quarkiverse/cxf/it/ws/rm/client/WsReliableMessagingTest.java#L28"))
-                .assertValid();
 
         if (!errors.isEmpty()) {
             Assertions.fail("Link validation errors:\n\n" + errors);
