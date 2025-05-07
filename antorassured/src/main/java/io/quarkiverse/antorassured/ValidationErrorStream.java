@@ -9,8 +9,6 @@ import java.util.TreeMap;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import io.quarkus.arc.RemovedBean;
-
 /**
  * A stream of invalid {@link ValidationResult}s.
  *
