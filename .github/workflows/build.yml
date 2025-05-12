@@ -43,6 +43,8 @@ jobs:
           cache: 'maven'
 
       - name: Build with Maven
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p ~/.redhat
           echo '{"disabled":true}' >> ~/.redhat/io.quarkus.analytics.localconfig

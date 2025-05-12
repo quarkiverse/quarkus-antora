@@ -12,8 +12,11 @@ import java.util.TreeSet;
  * @since 1.0.0
  */
 public class Link implements Comparable<Link> {
+    private final Link mappedFrom;
     private final String originalUri;
     private final String resolvedUri;
+    private final String resolvedFragmentlessUri;
+    private final String fragment;
     private final Set<Path> occurrences;
 
     /**
@@ -24,14 +27,31 @@ public class Link implements Comparable<Link> {
      * @since 1.0.0
      */
     public static Link ofResolved(String absoluteUri) {
-        return new Link(absoluteUri, absoluteUri, Collections.emptySet());
+        return new Link(null, absoluteUri, absoluteUri, Collections.emptySet());
     }
 
     Link(String originalUri, String resolvedUri, Set<Path> occurrences) {
+        this(null, originalUri, resolvedUri, occurrences);
+    }
+
+    Link(Link mappedFrom, String originalUri, String resolvedUri, Set<Path> occurrences) {
         super();
+        this.mappedFrom = mappedFrom;
         this.originalUri = originalUri;
         this.resolvedUri = resolvedUri;
         this.occurrences = occurrences;
+        int hashPos = resolvedUri.indexOf('#');
+        if (hashPos >= 0
+                && hashPos < resolvedUri.length() - 1 // a single hash mark does not count for a fragment
+        ) {
+
+            fragment = resolvedUri.substring(hashPos);
+            resolvedFragmentlessUri = resolvedUri.substring(0, hashPos);
+        } else {
+            fragment = null;
+            resolvedFragmentlessUri = resolvedUri;
+        }
+
     }
 
     /** Operates only on {@link #originalUri} and {@link #resolvedUri} */
@@ -67,6 +87,25 @@ public class Link implements Comparable<Link> {
     }
 
     /**
+     * @return {@link #resolvedUri} without fragment if it has one or otherwise {@link #resolvedUri} unchanged
+     *
+     * @since 2.0.0
+     */
+    public String resolvedFragmentlessUri() {
+        return resolvedFragmentlessUri;
+    }
+
+    /**
+     * @return a fragment (including the initial {@code #} character) if available in the {@link #resolvedUri} or otherwise
+     *         {@code null}
+     *
+     * @since 2.0.0
+     */
+    public String fragment() {
+        return fragment;
+    }
+
+    /**
      * @return a {@link Set} of HTML documents in which this Link occurs
      *
      * @since 1.0.0
@@ -82,7 +121,18 @@ public class Link implements Comparable<Link> {
      * @since 1.0.0
      */
     public Link withOccurrences(Set<Path> newOccurrences) {
-        return new Link(originalUri, resolvedUri, Collections.unmodifiableSet(new TreeSet<Path>(newOccurrences)));
+        return new Link(mappedFrom, originalUri, resolvedUri, Collections.unmodifiableSet(new TreeSet<Path>(newOccurrences)));
+    }
+
+    /**
+     * @param resolvedUri
+     * @return a new {@link Link} with its {@link #resolvedUri} set to the given {@code resolvedUri} and {@link #mappedFrom} set
+     *         to this {@link Link}
+     *
+     * @since 2.0.0
+     */
+    public Link mapToUri(String resolvedUri) {
+        return new Link(this, originalUri, resolvedUri, occurrences);
     }
 
     /**
@@ -95,7 +145,6 @@ public class Link implements Comparable<Link> {
         return resolvedUri.contains("//localhost")
                 || resolvedUri.contains("//127.0.0.1")
                 || resolvedUri.contains("//[::1]");
-
     }
 
     /** Includes only {@link #originalUri} and {@link #resolvedUri} */
@@ -106,6 +155,9 @@ public class Link implements Comparable<Link> {
 
     @Override
     public String toString() {
+        if (mappedFrom != null) {
+            return resolvedUri + " mapped from " + mappedFrom.toString();
+        }
         return (originalUri.equals(resolvedUri) ? originalUri : (originalUri + " -> " + resolvedUri)) + " on [" + occurrences
                 + "]";
     }

@@ -1,11 +1,8 @@
 package io.quarkiverse.antorassured;
 
-import io.quarkiverse.antorassured.LinkStream.LinkGroup;
-import io.quarkiverse.antorassured.LinkStream.LinkGroupStats;
-
 /**
- * See {@link LinkStream.LinkGroup#continuationPolicy(AggregatePolicy)} and
- * {@link LinkStream.LinkGroup#finalPolicy(AggregatePolicy)}.
+ * See {@link LinkGroup#continuationPolicy(AggregatePolicy)} and
+ * {@link LinkGroup#finalPolicy(AggregatePolicy)}.
  *
  * @since 2.0.0
  */
