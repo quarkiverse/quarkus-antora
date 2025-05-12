@@ -2,14 +2,19 @@ package io.quarkiverse.antorassured;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.charset.UnsupportedCharsetException;
 import java.time.Clock;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -18,13 +23,7 @@ import java.util.regex.Pattern;
 import org.jboss.logging.Logger;
 import org.jsoup.Connection;
 import org.jsoup.Connection.Method;
-import org.jsoup.Connection.Response;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.select.Elements;
-import org.jsoup.select.Selector.SelectorParseException;
-
-import io.quarkiverse.antorassured.LinkStream.LinkGroup;
 
 /**
  * A validator of web links.
@@ -58,8 +57,6 @@ public interface LinkValidator {
         private static final DateTimeFormatter HTTP_DATE_FORMAT = DateTimeFormatter
                 .ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH).withZone(ZoneId.of("GMT"));
         private static final Pattern DIGITS_ONLY = Pattern.compile("[0-9]+");
-
-        private static final Pattern JAVADOC_FRAGMENT_CHARS = Pattern.compile("[\\(\\)\\,\\.]");
 
         static final long RETRY_AFTER_DEFAULT = 60_000L;
         static final long RETRY_AFTER_MAX = 120_000L;
@@ -97,13 +94,7 @@ public interface LinkValidator {
                     return cached;
                 }
 
-                String fragment = null;
-                String fragmentLessUri = uri;
-                int hashPos = uri.indexOf('#');
-                if (hashPos >= 0) {
-                    fragment = uri.substring(hashPos);
-                    fragmentLessUri = uri.substring(0, hashPos);
-                }
+                final String fragmentLessUri = link.resolvedFragmentlessUri();
 
                 final CacheEntry entry;
 
@@ -122,7 +113,7 @@ public interface LinkValidator {
                     }
                     entry = documents.compute(fragmentLessUri, (k, v) -> {
                         if (v == null || v.shouldRetry()) {
-                            return fetch(jsoupSession, k, v == null ? 1 : (v.attempt + 1));
+                            return fetch(jsoupSession, k, group.headers(), v == null ? 1 : (v.attempt + 1));
                         } else {
                             return v;
                         }
@@ -131,70 +122,55 @@ public interface LinkValidator {
                     fragmentLessLock.unlock();
                 }
 
-                req.group().stats().recordStatus(entry.statusCode);
+                req.group().stats().recordStatus(entry.response.statusCode());
 
                 if (!entry.isValid()) {
                     return logAndReturn(uri,
-                            ValidationResult.retry(link, entry.statusCode, entry.message, entry.retryAtSystemTimeMs,
+                            ValidationResult.retry(link, entry.response.statusCode(), entry.message, entry.retryAtSystemTimeMs,
                                     entry.attempt, req.maxAttempts()));
                 }
 
-                /* No fragment */
-                if (fragment == null || "#".equals(fragment)) {
-                    return logAndReturn(uri, ValidationResult.valid(link, entry.statusCode));
-                }
+                return logAndReturn(uri, req.group().fragmentValidator().validate(link, entry.response));
 
-                if (fragment.startsWith("#L") && uri.startsWith("https://github.com/")) {
-                    /* GitHub line fragments do not exist in the DOM - consider them valid */
-                    return logAndReturn(uri, ValidationResult.valid(link, entry.statusCode));
-                }
-
-                /* Find the fragment */
-                final Document doc = entry.document;
-
-                if (JAVADOC_FRAGMENT_CHARS.matcher(fragment).find()) {
-                    /* Those chars are illegal in CSS selectors, so Tagsoup will fail at parsing the selector */
-                    final String id = fragment.substring(1);
-                    if (doc.getElementById(id) != null) {
-                        return logAndReturn(uri, ValidationResult.valid(link, entry.statusCode));
-                    }
-                }
-
-                try {
-                    Elements foundElems = doc.select(fragment);
-                    if (foundElems.isEmpty()) {
-                        foundElems = doc.select("a[name=\"" + fragment.substring(1) + "\"]");
-                    }
-                    if (!foundElems.isEmpty()) {
-                        return logAndReturn(uri, ValidationResult.valid(link, entry.statusCode));
-                    } else {
-                        final ValidationResult result = ValidationResult.invalid(link, entry.statusCode,
-                                "Could not find " + fragment);
-                        return logAndReturn(uri, result);
-                    }
-                } catch (SelectorParseException e) {
-                    log.error("Bad fragment: " + fragment + " in URI " + link.originalUri(), e);
-                    throw e;
-                }
             } finally {
                 messageLock.unlock();
             }
 
         }
 
-        static CacheEntry fetch(final Connection jsoupSession, final String uri, int attempt) {
+        static CacheEntry fetch(
+                final Connection jsoupSession,
+                final String fragmentlessUri,
+                Map<String, List<String>> headers,
+                int attempt) {
             {
                 try {
 
-                    final Response resp = jsoupSession
-                            .newRequest(uri)
+                    final Connection req = jsoupSession
+                            .newRequest(fragmentlessUri)
+                            .ignoreContentType(true)
                             .method(Method.GET)
-                            .ignoreHttpErrors(true)
-                            .execute();
+                            .ignoreHttpErrors(true);
+                    if (headers != null) {
+                        for (Entry<String, List<String>> header : headers.entrySet()) {
+                            for (String val : header.getValue()) {
+                                req.header(header.getKey(), val);
+                            }
+                        }
+                    }
+                    final org.jsoup.Connection.Response resp = req.execute();
                     final int statusCode = resp.statusCode();
+                    log.debugf("Fetched %d: %s", statusCode, fragmentlessUri);
+                    final Response response = new Response(
+                            fragmentlessUri,
+                            statusCode,
+                            resp.statusMessage(),
+                            charset(resp.charset()),
+                            resp.contentType(),
+                            resp.bodyAsBytes());
                     switch (statusCode) {
                         case 200:
-                            return CacheEntry.valid(statusCode, resp.parse());
+                            return CacheEntry.valid(response);
                         case 301:
                         case 429:
                         case 500:
@@ -204,24 +180,37 @@ public interface LinkValidator {
                         case 504:
                             final String rawRetryAfter = resp.header("Retry-After");
                             final long retryAtSystemTimeMs = parseRetryAfter(rawRetryAfter, Clock.systemUTC());
-                            return CacheEntry.retry(statusCode,
-                                    resp.statusMessage() + ", Retry-After: " + rawRetryAfter,
+                            return CacheEntry.retry(
+                                    response,
+                                    statusCode + " " + resp.statusMessage() + ", Retry-After: " + rawRetryAfter,
                                     retryAtSystemTimeMs, attempt);
                         default:
-                            return CacheEntry.invalid(statusCode, "" + statusCode + " " + resp.statusMessage());
+                            return CacheEntry.invalid(response, "" + statusCode + " " + resp.statusMessage(), attempt);
                     }
                 } catch (java.net.ConnectException e) {
-                    return CacheEntry.invalid(-1, "Unable to connect: " + e.getMessage());
+                    return CacheEntry.invalid(Response.none(fragmentlessUri), "Unable to connect: " + e.getMessage());
                 } catch (java.net.UnknownHostException e) {
-                    return CacheEntry.invalid(-2, "Unknown host " + e.getMessage());
+                    return CacheEntry.invalid(Response.none(fragmentlessUri), "Unknown host " + e.getMessage());
                 } catch (org.jsoup.HttpStatusException e) {
-                    return CacheEntry.invalid(e.getStatusCode(), "" + e.getStatusCode());
+                    return CacheEntry.invalid(new Response(fragmentlessUri, e.getStatusCode(), null, null, null, null),
+                            "" + e.getStatusCode());
                 } catch (Exception e) {
                     StringWriter sw = new StringWriter();
                     PrintWriter pw = new PrintWriter(sw);
                     e.printStackTrace(pw);
-                    return CacheEntry.invalid(-3, sw.toString());
+                    return CacheEntry.invalid(Response.none(fragmentlessUri), sw.toString());
                 }
+            }
+        }
+
+        static Charset charset(String charset) {
+            if (charset == null) {
+                return StandardCharsets.UTF_8;
+            }
+            try {
+                return Charset.forName(charset);
+            } catch (UnsupportedCharsetException e) {
+                return StandardCharsets.UTF_8;
             }
         }
 
@@ -254,23 +243,27 @@ public interface LinkValidator {
             return result;
         }
 
-        record CacheEntry(String message, int statusCode, Document document, long retryAtSystemTimeMs, int attempt) {
+        record CacheEntry(String message, Response response, long retryAtSystemTimeMs, int attempt) {
 
             private static final int NO_RETRY = -1;
-            static CacheEntry retry(int statusCode, String statusMessage, long retryAtSystemTimeMs, int attempt) {
-                return new CacheEntry("" + statusCode + " " + statusMessage, statusCode, null, retryAtSystemTimeMs, attempt);
+            static CacheEntry retry(Response response, String message, long retryAtSystemTimeMs, int attempt) {
+                return new CacheEntry(message, response, retryAtSystemTimeMs, attempt);
             }
 
-            static CacheEntry valid(int statusCode, Document document) {
-                return new CacheEntry(null, statusCode, document, NO_RETRY, NO_RETRY);
+            static CacheEntry valid(Response response) {
+                return new CacheEntry(null, response, NO_RETRY, NO_RETRY);
             }
 
-            static CacheEntry invalid(int statusCode, String message) {
-                return new CacheEntry(message, statusCode, null, NO_RETRY, NO_RETRY);
+            static CacheEntry invalid(Response response, String message, int attemptCount) {
+                return new CacheEntry(message, response, NO_RETRY, attemptCount);
+            }
+
+            static CacheEntry invalid(Response response, String message) {
+                return new CacheEntry(message, response, NO_RETRY, NO_RETRY);
             }
 
             public boolean isValid() {
-                return document != null;
+                return 200 <= response.statusCode() && response.statusCode() < 300;
             }
 
             public boolean shouldRetry() {

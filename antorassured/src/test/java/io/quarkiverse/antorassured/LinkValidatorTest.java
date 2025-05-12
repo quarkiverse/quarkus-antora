@@ -33,11 +33,6 @@ public class LinkValidatorTest {
                         "http://docs.oasis-open.org/ws-sx/ws-securitypolicy/v1.2/errata01/os/ws-securitypolicy-1.2-errata01-os-complete.html#_Toc325572744"))
                 .assertValid();
 
-        validator.validate(
-                req(
-                        "https://github.com/quarkiverse/quarkus-cxf/blob/3.15/integration-tests/ws-rm-client/src/test/java/io/quarkiverse/cxf/it/ws/rm/client/WsReliableMessagingTest.java#L28"))
-                .assertValid();
-
     }
 
     static ValidationRequest req(String link) {

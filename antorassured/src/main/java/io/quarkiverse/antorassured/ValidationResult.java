@@ -33,8 +33,8 @@ public final class ValidationResult {
      * @return a new invalid {@link ValidationResult} without {@link #retryAtSystemTimeMs} set
      * @since 1.0.0
      */
-    public static ValidationResult invalid(Link link, int statusCode, String message) {
-        return new ValidationResult(link, statusCode, message, NO_RETRY, 0, 0);
+    public static ValidationResult invalid(Link link, int statusCode, String message, int attemptsCount) {
+        return new ValidationResult(link, statusCode, message, NO_RETRY, 0, attemptsCount);
     }
 
     /**
@@ -127,9 +127,12 @@ public final class ValidationResult {
         } else {
             result
                     .append(": ")
-                    .append(message)
-                    .append(", attempted ")
-                    .append(attemptsPerformed + " times");
+                    .append(message);
+            if (attemptsPerformed >= 0) {
+                result
+                        .append(", attempted ")
+                        .append(attemptsPerformed + " times");
+            }
             if (shouldRetry()) {
                 result.append(", retry in ")
                         .append((retryAtSystemTimeMs - System.currentTimeMillis()) / 1000)

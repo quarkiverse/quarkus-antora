@@ -1,8 +1,5 @@
 package io.quarkiverse.antorassured;
 
-import io.quarkiverse.antorassured.LinkStream.LinkGroup;
-import io.quarkiverse.antorassured.LinkStream.LinkGroupStats;
-
 public record ValidationRequest(Link link, int maxAttempts, LinkGroup group) {
     /**
      * Applies the continuation policies of the given {@link LinkGroup}

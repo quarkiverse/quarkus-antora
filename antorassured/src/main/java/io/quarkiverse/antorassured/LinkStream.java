@@ -6,10 +6,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -17,7 +14,6 @@ import java.util.stream.Stream;
 
 import org.jboss.logging.Logger;
 
-import io.quarkiverse.antorassured.AggregatePolicy.AggregatePolicyResult;
 import io.quarkiverse.antorassured.LinkValidator.LinkValidatorImpl;
 
 /**
@@ -27,11 +23,11 @@ import io.quarkiverse.antorassured.LinkValidator.LinkValidatorImpl;
  */
 public class LinkStream {
     private static final Logger log = Logger.getLogger(AntorAssured.class);
-    private final Stream<Link> links;
-    private final ResourceResolver resourceResolver;
-    private final int retryAttempts;
-    private long overallTimeout;
-    private final List<LinkGroup> groups;
+    final Stream<Link> links;
+    final ResourceResolver resourceResolver;
+    final int retryAttempts;
+    long overallTimeout;
+    final List<LinkGroup> groups;
 
     LinkStream(
             Stream<Link> links,
@@ -58,8 +54,17 @@ public class LinkStream {
     }
 
     static LinkGroup createDefaultGroup() {
-        return new LinkGroup(null, Pattern.compile(".*"), RateLimit.none(),
-                Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), new LinkGroupStats());
+        return new LinkGroup(
+                null,
+                Pattern.compile(".*"),
+                Function.identity(),
+                Collections.emptyMap(),
+                RateLimit.none(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                new LinkGroupStats(),
+                FragmentValidator.defaultFragmentValidator());
     }
 
     /**
@@ -232,11 +237,27 @@ public class LinkStream {
         return new LinkGroup(
                 this,
                 Pattern.compile(regExp),
+                Function.identity(),
+                Collections.emptyMap(),
                 RateLimit.none(),
                 Collections.emptyList(),
                 Collections.emptyList(),
                 Collections.emptyList(),
-                new LinkGroupStats());
+                new LinkGroupStats(),
+                FragmentValidator.defaultFragmentValidator());
+    }
+
+    /**
+     * Uses an external {@link LinkGroupFactory} to create and pre-configure a new {@link LinkGroup}.
+     *
+     * @param linkGroupFactory creates the new {@link LinkGroup}
+     * @return a new {@link LinkGroup} that can be further customized
+     *
+     * @see #group(String)
+     * @since 2.0.0
+     */
+    public LinkGroup group(LinkGroupFactory linkGroupFactory) {
+        return linkGroupFactory.createLinkGroup(this);
     }
 
     /**
@@ -272,7 +293,8 @@ public class LinkStream {
                 .map(req -> {
                     if (deadline <= System.currentTimeMillis()) {
                         return ValidationResult.invalid(req.link(), 0,
-                                "Did not try, overall timeout of " + overallTimeout + " ms expired");
+                                "Did not try, overall timeout of " + overallTimeout + " ms expired",
+                                -1);
                     } else {
                         return validator.validate(req);
                     }
@@ -305,8 +327,12 @@ public class LinkStream {
             final long delay = oldResult.retryAtSystemTimeMs() - System.currentTimeMillis();
             if (oldResult.retryAtSystemTimeMs() >= deadline) {
                 invalidWithRetry.remove(0);
-                invalidWithouRetry.add(ValidationResult.invalid(oldResult.uri(), 0,
-                        "Did not try (again), overall timeout of " + overallTimeout + " ms expired"));
+                invalidWithouRetry.add(
+                        ValidationResult.invalid(
+                                oldResult.uri(),
+                                0,
+                                "Did not try (again), overall timeout of " + overallTimeout + " ms expired",
+                                -1));
                 continue;
             }
 
@@ -345,223 +371,10 @@ public class LinkStream {
 
     ValidationRequest createRequest(Link link) {
         for (LinkGroup group : groups) {
-            if (group.pattern.matcher(link.resolvedUri()).matches()) {
-                return new ValidationRequest(link, retryAttempts + 1, group);
+            if (group.pattern().matcher(link.resolvedUri()).matches()) {
+                return new ValidationRequest(group.linkMapper.apply(link), retryAttempts + 1, group);
             }
         }
         return new ValidationRequest(link, retryAttempts + 1, groups.get(groups.size() - 1));
-    }
-
-    /**
-     * Statistics of a {@link LinkGroup}
-     *
-     * @since 2.0.0
-     */
-    public static class LinkGroupStats {
-        private final Map<Integer, AtomicInteger> stats = new ConcurrentHashMap<>();
-
-        /**
-         * Records the given {@code statusCode} in this {@link LinkGroupStats}.
-         *
-         * @param statusCode
-         */
-        public void recordStatus(int statusCode) {
-            stats.computeIfAbsent(statusCode, k -> new AtomicInteger()).incrementAndGet();
-        }
-
-        /**
-         * @param statusCode the HTTP status code whose counts should returned
-         * @return the number of HTTP responses having the given {@code statusCode}
-         *
-         * @since 2.0.0
-         */
-        public int getResponseCountByStatus(int statusCode) {
-            return stats.computeIfAbsent(statusCode, k -> new AtomicInteger()).get();
-        }
-    }
-
-    /**
-     * A group if {@link Link}s defined by a {@link Pattern} on which additional constraints and policies can be applied.
-     *
-     * @since 2.0.0
-     */
-    public static class LinkGroup {
-        private final LinkStream parent;
-        private final Pattern pattern;
-        private final RateLimit rateLimit;
-        private final List<Function<Stream<Link>, Stream<Link>>> streamTransformers;
-        final List<AggregatePolicy> continuationPolicies;
-        private final List<AggregatePolicy> finalPolicies;
-        private final LinkGroupStats stats;
-
-        private LinkGroup(
-                LinkStream parent,
-                Pattern pattern,
-                RateLimit rateLimit,
-                List<Function<Stream<Link>, Stream<Link>>> streamTransformers,
-                List<AggregatePolicy> continuationPolicies,
-                List<AggregatePolicy> finalPolicies,
-                LinkGroupStats stats) {
-            this.parent = parent;
-            this.pattern = pattern;
-            this.rateLimit = rateLimit;
-            this.streamTransformers = streamTransformers;
-            this.continuationPolicies = continuationPolicies;
-            this.finalPolicies = finalPolicies;
-            this.stats = stats;
-        }
-
-        /**
-         * @param rateLimit the {@link RateLimit} to apply on this {@link LinkGroup}
-         * @return a new {@link LinkGroup}
-         *
-         * @since 2.0.0
-         */
-        public LinkGroup rateLimit(RateLimit rateLimit) {
-            return new LinkGroup(
-                    parent,
-                    pattern,
-                    rateLimit,
-                    streamTransformers,
-                    continuationPolicies,
-                    finalPolicies,
-                    stats);
-        }
-
-        /**
-         * Shuffle the order of the Links belonging to this {@link LinkGroup}.
-         * The default order is alphabetic by {@link Link#resolvedUri()}.
-         *
-         * @return a new {@link LinkGroup}
-         *
-         * @since 2.0.0
-         */
-        public LinkGroup randomOrder() {
-            return new LinkGroup(
-                    parent,
-                    pattern,
-                    rateLimit,
-                    copyAndAdd(
-                            streamTransformers,
-                            stream -> {
-                                final List<Link> complement = new ArrayList<>();
-                                final List<Link> group = new ArrayList<>();
-                                stream.forEach(link -> {
-                                    if (pattern.matcher(link.resolvedUri()).matches()) {
-                                        synchronized (group) {
-                                            group.add(link);
-                                        }
-                                    } else {
-                                        synchronized (complement) {
-                                            complement.add(link);
-                                        }
-                                    }
-                                });
-                                Collections.shuffle(group);
-                                return Stream.concat(complement.stream(), group.stream());
-                            }),
-                    continuationPolicies,
-                    finalPolicies,
-                    stats);
-        }
-
-        /**
-         * Apply the given {@code policy} before validating each {@link Links} of this {@link LinkGroup}.
-         * <p>
-         * Handy e.g. for skipping the rest of links in the {@link LinkGroup} upon encountering {@code 429 Too many requests}.
-         *
-         * @param policy the {@link AggregatePolicy} to apply
-         * @return a new {@link LinkGroup}
-         *
-         * @since 2.0.0
-         */
-        public LinkGroup continuationPolicy(AggregatePolicy assertion) {
-            return new LinkGroup(
-                    parent,
-                    pattern,
-                    rateLimit,
-                    streamTransformers,
-                    copyAndAdd(continuationPolicies, assertion),
-                    finalPolicies,
-                    stats);
-        }
-
-        /**
-         * Apply the given {@code policy} after validating all {@link Links} of the parent {@link LinkStream}.
-         * <p>
-         * Handy for enforcing some positive assertions, such as at least n {@link Link}s valid for the given group,
-         * when some {@link #continuationPolicy(AggregatePolicy)} is set that skips a portion of links, e.g. upon
-         * encountering {@code 429 Too many requests}.
-         *
-         * @param policy the {@link AggregatePolicy} to apply
-         * @return a new {@link LinkGroup}
-         *
-         * @since 2.0.0
-         */
-        public LinkGroup finalPolicy(AggregatePolicy policy) {
-            return new LinkGroup(
-                    parent,
-                    pattern,
-                    rateLimit,
-                    streamTransformers,
-                    continuationPolicies,
-                    copyAndAdd(finalPolicies, policy),
-                    stats);
-        }
-
-        /**
-         * Add this {@link LinkGroup} to the parent {@link LinkStream}.
-         *
-         * @return the parent {@link LinkStream}
-         *
-         * @since 2.0.0
-         */
-        public LinkStream endGroup() {
-            if (parent == null) {
-                throw new IllegalStateException("Cannot end parentless group");
-            }
-            final List<LinkGroup> newGroups = new ArrayList<>(parent.groups);
-            newGroups.add(parent.groups.size() - 1, this);
-            return new LinkStream(parent.links, parent.resourceResolver, parent.retryAttempts, newGroups,
-                    parent.overallTimeout);
-        }
-
-        /**
-         * @return the {@link Pattern} defining this {@link LinkGroup}
-         */
-        public Pattern pattern() {
-            return pattern;
-        }
-
-        /**
-         * @return the {@link RateLimit} set on this {@link LinkGroup} or {@code null} if none has been set
-         */
-        public RateLimit rateLimit() {
-            return rateLimit;
-        }
-
-        /**
-         * @return the {@link LinkGroupStats} associated with this {@link LinkGroup}
-         */
-        public LinkGroupStats stats() {
-            return stats;
-        }
-
-        ValidationResult applyFinalPolicies() {
-            for (AggregatePolicy policy : finalPolicies) {
-                AggregatePolicyResult result = policy.apply(stats);
-                if (!result.isValid()) {
-                    return ValidationResult.invalid(Link.ofResolved(pattern.pattern()), -5, result.message());
-                }
-            }
-            return ValidationResult.valid(Link.ofResolved(pattern.pattern()), 0);
-        }
-
-        static <T> List<T> copyAndAdd(List<T> old, T newElement) {
-            final ArrayList<T> result = new ArrayList<>(old);
-            result.add(newElement);
-            return result;
-        }
-
     }
 }
