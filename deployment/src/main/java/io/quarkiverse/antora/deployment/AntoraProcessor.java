@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import org.jboss.logging.Logger;
@@ -98,7 +99,7 @@ public class AntoraProcessor {
             }
         }
 
-        buildWithContainer(fixedConfig.image(), gitRepoRoot, antoraPlaybookPath);
+        buildWithContainer(fixedConfig.image(), gitRepoRoot, antoraPlaybookPath, pbInfo.npmPackages());
 
         try (Stream<Path> files = Files.walk(pbInfo.outDir)) {
             files.forEach(absP -> {
@@ -145,9 +146,10 @@ public class AntoraProcessor {
 
     }
 
-    private void buildWithContainer(String antoraImageName, final Path gitRepoRoot, final Path antoraPlaybookPath) {
+    private void buildWithContainer(String antoraImageName, final Path gitRepoRoot, final Path antoraPlaybookPath,
+            List<String> npmPackages) {
         try {
-            new NativeImageBuildRunner().build(antoraImageName, gitRepoRoot, antoraPlaybookPath);
+            new NativeImageBuildRunner().build(antoraImageName, gitRepoRoot, antoraPlaybookPath, npmPackages);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (IOException e) {
@@ -216,6 +218,8 @@ public class AntoraProcessor {
         output.put("dir", "./" + outputDir.toString());
 
         handleSupplementalFiles(playbook, (ui, oldValue) -> ui.put("supplemental_files", "./." + oldValue));
+        final List<String> npmPackages = new ArrayList<>();
+        handleExtensions(playbook, npmPackages::add);
 
         try (Writer out = Files.newBufferedWriter(augmentedAntoraPlaybookYml, StandardCharsets.UTF_8)) {
             yaml.dump(playbook, out);
@@ -223,7 +227,17 @@ public class AntoraProcessor {
             throw new RuntimeException("Could not write " + augmentedAntoraPlaybookYml, e);
         }
 
-        return new PlaybookInfo(augmentedAntoraPlaybookYml, targetDir.resolve(outputDir));
+        return new PlaybookInfo(augmentedAntoraPlaybookYml, targetDir.resolve(outputDir), npmPackages);
+    }
+
+    static void handleExtensions(Map<String, Object> playbook, Consumer<String> extensionConsumer) {
+        final Object asciidoc = playbook.get("asciidoc");
+        if (asciidoc instanceof Map) {
+            final Object extensions = ((Map<String, Object>) asciidoc).get("extensions");
+            if (extensions instanceof List) {
+                ((List<String>) extensions).stream().forEach(extensionConsumer);
+            }
+        }
     }
 
     static void handleSupplementalFiles(Map<String, Object> playbook,
@@ -273,7 +287,7 @@ public class AntoraProcessor {
         return result;
     }
 
-    private record PlaybookInfo(Path playbookPath, Path outDir) {
+    private record PlaybookInfo(Path playbookPath, Path outDir, List<String> npmPackages) {
 
     }
 }

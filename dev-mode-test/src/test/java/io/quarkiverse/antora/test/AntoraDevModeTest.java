@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
@@ -46,6 +48,20 @@ public class AntoraDevModeTest {
                         });
                 response
                         .body(CoreMatchers.containsString("<h1 class=\"page\">Lorem ipsum</h1>"));
+            }
+
+            /* Make sure the SVG file for the UML diagram was generated */
+            final Path imagesDir = baseDir.resolve("target/classes/META-INF/antora/quarkus-antora/dev/_images");
+            Assertions.assertThat(imagesDir).isDirectory();
+            try (Stream<Path> files = Files.list(imagesDir)) {
+                final Optional<String> svgFile = files
+                        .map(Path::getFileName)
+                        .map(Path::toString)
+                        .filter(fn -> fn.startsWith("alice-and-bob-") && fn.endsWith(".svg"))
+                        .findFirst();
+                Assertions.assertThat(svgFile)
+                        .withFailMessage(() -> "Expected " + imagesDir.toString() + "/alice-and-bob-*.svg to exist")
+                        .isNotEmpty();
             }
 
             /* Make sure new.adoc does not exist yet */
