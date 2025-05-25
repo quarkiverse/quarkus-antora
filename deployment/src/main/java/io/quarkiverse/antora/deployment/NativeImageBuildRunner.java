@@ -43,7 +43,7 @@ public class NativeImageBuildRunner {
         containerName = "antora-" + RandomStringUtils.random(5, true, false);
     }
 
-    public void build(String antoraImageName, Path outputDir, Path antoraPlaybookPath)
+    public void build(String antoraImageName, Path outputDir, Path antoraPlaybookPath, List<String> npmPackages)
             throws InterruptedException, IOException {
 
         final List<String> cmd = new ArrayList<>();
@@ -88,15 +88,40 @@ public class NativeImageBuildRunner {
         cmd.add("--name");
         cmd.add(containerName);
 
+        cmd.add("--entrypoint");
+        cmd.add("/bin/sh");
+
         cmd.add(antoraImageName);
 
-        cmd.add("--cache-dir=./antora-cache");
-        cmd.add(antoraPlaybookPath.toString());
+        cmd.add("-c");
+
+        final StringBuilder startScript = new StringBuilder();
+
+        if (!npmPackages.isEmpty()) {
+
+            /*
+             * Avoid the following npm error:
+             * Your cache folder contains root-owned files, due to a bug in
+             * previous versions of npm which has since been addressed.
+             */
+            startScript.append("mkdir -p ./antora-cache/npm-cache && export npm_config_cache=./antora-cache/npm-cache && ");
+
+            startScript.append("npm i");
+
+            for (String pkg : npmPackages) {
+                startScript.append(' ').append(pkg);
+            }
+            startScript.append(" && ");
+        }
+        startScript.append("antora --cache-dir=./antora-cache ");
+        startScript.append(antoraPlaybookPath.toString());
+
+        cmd.add(startScript.toString());
 
         final String[] buildCommand = cmd.toArray(new String[0]);
 
         log.infof("Running Antora with %s:", containerRuntime.getExecutableName());
-        log.info(String.join(" ", buildCommand).replace("$", "\\$"));
+        log.info("'" + String.join("' '", buildCommand).replace("$", "\\$") + "'");
         final Process process = new ProcessBuilder(buildCommand)
                 .directory(outputDir.toFile())
                 .redirectErrorStream(true)

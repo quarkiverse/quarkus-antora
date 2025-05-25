@@ -83,6 +83,33 @@ image::live-edit.png[optional attribute,optional attribute]
 [[test-warnings]]
 Once you are done with editing, hit `Q` or `CRTL+C` to exit the dev mode.
 
+== `antora-playbook.yml`
+
+The Antora site generation process is controlled by the `https://docs.antora.org/antora/latest/playbook/[antora-playbook.yml]` file.
+
+If there is no `antora-playbook.yml` file found side by side with `antora.yml`, then `quarkus-antora` will generate one
+and store it under `target/antora-playbook.yml`.
+
+In case there is an `antora-playbook.yml` file in your Maven or Gradle module,
+then `quarkus-antora` will attempt to respect it as far as possible.
+`quarkus-antora` will transform som file paths so that they match the changed location of the augmented `antora-playbook.yml` file
+and so that the site is generated under `target/classes/META-INF/antora`.
+
+[TIP]
+====
+You can always check the result of the transformation under `target/antora-playbook.yml`.
+====
+
+=== Antora extensions
+
+In case there are any Antora extensions, such as `https://github.com/asciidoctor/asciidoctor-kroki[asciidoctor-kroki]` declared in your `antora-playbook.yml`,
+then `quarkus-antora` will install them using `npm i <extension-1>[ <extension-2>[ ...]]` inside the Antora container before invoking `antora`.
+
+[WARNING]
+====
+Local extension scripts are not supported at this time.
+====
+
 == Configuration
 
 include::./includes/quarkus-antora.adoc[]
