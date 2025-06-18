@@ -3,35 +3,42 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.quarkiverse.antora</groupId>
-        <artifactId>quarkus-antora-core-parent</artifactId>
+        <artifactId>quarkus-antora-quarkiverse-parent</artifactId>
         <version>2.0.1-SNAPSHOT</version>
     </parent>
-    <artifactId>quarkus-antora-deployment</artifactId>
-    <name>Quarkus Antora - Deployment</name>
+    <artifactId>quarkus-antora-quarkiverse</artifactId>
+    <name>Quarkus Antora - Quarkiverse</name>
+
     <dependencies>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-core</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.quarkiverse.antora</groupId>
             <artifactId>quarkus-antora</artifactId>
         </dependency>
-        <dependency>
-            <groupId>io.quarkiverse.antora</groupId>
-            <artifactId>quarkus-antora-spi</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-core-deployment</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-vertx-http-deployment</artifactId>
-       </dependency>
-       <dependency>
-           <groupId>org.yaml</groupId>
-           <artifactId>snakeyaml</artifactId>
-        </dependency>
     </dependencies>
+
     <build>
         <plugins>
+            <plugin>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-extension-maven-plugin</artifactId>
+                <version>${quarkus.version}</version>
+                <executions>
+                    <execution>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>extension-descriptor</goal>
+                        </goals>
+                        <configuration>
+                            <deployment>
+                                ${project.groupId}:${project.artifactId}-deployment:${project.version}</deployment>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>

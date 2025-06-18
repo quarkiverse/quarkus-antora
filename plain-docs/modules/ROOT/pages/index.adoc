@@ -1,0 +1,110 @@
+= Quarkus Antora
+
+== Features
+
+* Build, package and serve an https://antora.org/[Antora] site from a Quarkus application
+* Edit the AsciiDoc files in Quarkus `dev` mode and the site is rebuilt upon browser reload
+* xref:testing.adoc[Test] the generated Antora site
+
+== Prerequisites
+
+The extension uses the Antora container to build the site.
+You will therefore need a working container runtime, such as Docker or Podman.
+
+== Installation
+
+To use this extension, add the following dependency to your POM file:
+
+[source,xml,subs=attributes+]
+----
+<dependency>
+    <groupId>io.quarkiverse.antora</groupId>
+    <artifactId>quarkus-antora</artifactId>
+    <version>{project-version}</version>
+</dependency>
+----
+
+[[dev-mode]]
+== Edit in Quarkus dev mode
+
+The `https://github.com/quarkiverse/quarkus-antora/tree/main/docs[docs]` module in the source tree of Quarkus Antora may serve as a runnable example.
+
+[source,shell]
+----
+# Checkout the sources
+$ git clone https://github.com/quarkiverse/quarkus-antora.git
+$ cd quarkus-antora
+
+# Build the whole project
+$ ./mvnw install -DskipTests -Dquarkus.build.skip
+
+# Change to docs module and start Quarkus in dev mode
+$ cd docs
+$ ../mvnw quarkus:dev
+...
+2024-04-11 18:26:56,703 INFO  [io.qua.ant.dep.AntoraProcessor] (build-3) Producing META-INF/antora/index.html
+__  ____  __  _____   ___  __ ____  ______
+ --/ __ \/ / / / _ | / _ \/ //_/ / / / __/
+ -/ /_/ / /_/ / __ |/ , _/ ,< / /_/ /\ \
+--\___\_\____/_/ |_/_/|_/_/|_|\____/___/
+2024-04-11 18:26:57,010 INFO  [io.quarkus] (Quarkus Main Thread) quarkus-antora-docs 0.0.2-SNAPSHOT on JVM (powered by Quarkus 3.9.3) started in 3.829s. Listening on: http://localhost:8080
+
+2024-04-11 18:26:57,011 INFO  [io.quarkus] (Quarkus Main Thread) Profile dev activated. Live Coding activated.
+2024-04-11 18:26:57,012 INFO  [io.quarkus] (Quarkus Main Thread) Installed features: [antora, cdi, smallrye-context-propagation, vertx]
+----
+
+Once Quarkus has fully started, hit `w` to open the Antora site in browser.
+That should open http://localhost:8080/quarkus-antora/dev/index.html
+
+Then edit some of the pages, for example
+
+[source,shell]
+----
+$ sed -i 's/= Quarkus Antora/= I love Antora/' modules/ROOT/pages/index.adoc
+----
+
+Go back to the browser, hit `F5` to reload the page.
+
+After that you should see the application being rebuilt and re-deployed in the console.
+
+[source,shell]
+----
+...
+INFO  [io.qua.dep.dev.RuntimeUpdatesProcessor] ... Live reload total time: 1.151s
+----
+
+Then the page should get loaded with the new title "I love Antora".
+
+[[test-warnings]]
+image::live-edit.png[optional attribute,optional attribute]
+
+[[test-warnings]]
+Once you are done with editing, hit `Q` or `CRTL+C` to exit the dev mode.
+
+== `antora-playbook.yml`
+
+The Antora site generation process is controlled by the `https://docs.antora.org/antora/latest/playbook/[antora-playbook.yml]` file.
+
+If there is no `antora-playbook.yml` file found side by side with `antora.yml`, then `quarkus-antora` will generate one
+and store it under `target/antora-playbook.yml`.
+
+In case there is an `antora-playbook.yml` file in your Maven or Gradle module,
+then `quarkus-antora` will attempt to respect it as far as possible.
+`quarkus-antora` will transform som file paths so that they match the changed location of the augmented `antora-playbook.yml` file
+and so that the site is generated under `target/classes/META-INF/antora`.
+
+[TIP]
+====
+You can always check the result of the transformation under `target/antora-playbook.yml`.
+====
+
+=== Antora extensions
+
+In case there are any Antora extensions, such as `https://github.com/asciidoctor/asciidoctor-kroki[asciidoctor-kroki]` declared in your `antora-playbook.yml`,
+then `quarkus-antora` will install them using `npm i <extension-1>[ <extension-2>[ ...]]` inside the Antora container before invoking `antora`.
+
+[WARNING]
+====
+Local extension scripts are not supported at this time.
+====
+

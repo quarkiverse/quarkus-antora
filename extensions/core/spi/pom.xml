@@ -3,15 +3,17 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.quarkiverse.antora</groupId>
-        <artifactId>quarkus-antora-parent</artifactId>
+        <artifactId>quarkus-antora-core-parent</artifactId>
         <version>2.0.1-SNAPSHOT</version>
     </parent>
-    <artifactId>quarkus-antora-extensions</artifactId>
-    <name>Quarkus Antora - Extensions</name>
-    <packaging>pom</packaging>
+    <artifactId>quarkus-antora-spi</artifactId>
+    <name>Quarkus Antora - SPI</name>
 
-    <modules>
-        <module>core</module>
-        <module>quarkiverse</module>
-    </modules>
+    <dependencies>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-core-deployment</artifactId>
+        </dependency>
+    </dependencies>
+
 </project>

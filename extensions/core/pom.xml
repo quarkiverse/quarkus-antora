@@ -11,6 +11,7 @@
     <name>Quarkus Antora - Core Parent POM</name>
 
     <modules>
+        <module>spi</module>
         <module>deployment</module>
         <module>runtime</module>
     </modules>
