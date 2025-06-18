@@ -1,0 +1,83 @@
+= Testing Antora sites
+
+This project provides utilities and guidelines for testing Antora documentation sites.
+
+Quarkiverse projects usually host their Antora documentation in a dedicated `docs` Maven module.
+After adding the `quarkus-antora` dependency, you can not only
+xref:index.adoc#dev-mode[life-edit the site in Quarkus dev mode] but also
+
+* Test that Antora is able to generate the site from your AsciiDoc sources
+* Ensure that all external links are valid.
+
+== Basic `@QuarkusTest`
+
+The way we test the site generation is not much different from
+https://quarkus.io/guides/getting-started-testing[testing any other Quarkus application].
+
+First, you need to add the necessary dependencies
+
+[source,xml,subs=attributes+]
+----
+include::example$testing/pom.xml[tag=basic-test]
+----
+
+Then you can add a basic `@QuarkusTest` as follows:
+
+[source,java]
+----
+include::example$testing/AntoraSiteTest.java[tag=getIndex]
+    ...
+}
+----
+
+[TIP]
+====
+The sample code snippets used in this section come from the
+https://github.com/quarkiverse/quarkus-antora/tree/main/docs[`docs` module] of Quarkus Antora
+====
+
+[[antorassured]]
+== Detect dead links with `AntorAssured`
+
+Antora takes care for validating internal cross-references but it does not help much with ensuring
+that external links point to existing resources.
+Page fragments (the part starting with `#` in `page.html#anchor`) are not validated by Antora too.
+
+That's where the `io.quarkiverse.antorassured.AntorAssured` class provided by Quarkus Antora may come in handy.
+
+To use it, you need to add the following dependency:
+
+[source,xml,subs=attributes+]
+----
+include::example$testing/pom.xml[tag=dead-links]
+----
+
+Then you can use it in a test as follows:
+
+[source,java]
+----
+include::example$testing/AntoraSiteTest.java[tag=externalLinks]
+----
+
+In the test, we instruct the link validator to ignore some remote URIs, that we intentionally placed into `test-page.adoc`
+for the sake of testing `AntoraAssured` itself.
+
+If you would like to see the dead link detection in action, just remove the whole `excludeResolved(...)` method invocation.
+After that, you should see the test fail with a report like the following:
+
+[source,text]
+----
+[ERROR]   AntoraSiteTest.validateLinks:48
+ - /home/user/projects/quarkus-antora/docs/modules/ROOT/pages/index.adoc:59
+     - http://localhost:8080/quarkus-antora/dev/index.html -> http://localhost:8080/quarkus-antora/dev/index.html
+         - Unable to connect: Connection refused
+ - /home/user/projects/quarkus-antora/docs/modules/ROOT/pages/test-page.adoc:15
+     - https://quarkus.io/fake-page -> https://quarkus.io/fake-page
+         - 404
+ - /home/user/projects/quarkus-antora/docs/modules/ROOT/pages/test-page.adoc:14
+     - https://salkjasjhashgajhhsahgahjas.com -> https://salkjasjhashgajhhsahgahjas.com
+         - Unknown host salkjasjhashgajhhsahgahjas.com
+ - /home/user/projects/quarkus-antora/docs/modules/ROOT/pages/test-page.adoc:16
+     - https://quarkus.io/guides/building-native-image#fake-fragment -> https://quarkus.io/guides/building-native-image#fake-fragment
+         - Could not find #fake-fragment
+----

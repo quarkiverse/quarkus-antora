@@ -4,20 +4,14 @@
     <parent>
         <groupId>io.quarkiverse.antora</groupId>
         <artifactId>quarkus-antora-parent</artifactId>
-        <version>2.0.1-SNAPSHOT</version>
+        <version>0.0.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>quarkus-antora-docs</artifactId>
-    <name>Quarkus Antora - Documentation</name>
+    <artifactId>quarkus-antora-plain-docs</artifactId>
+    <name>Quarkus Antora - Site without antora-playbook.yaml</name>
 
     <dependencies>
-        <dependency>
-            <groupId>io.quarkiverse.antora</groupId>
-            <artifactId>quarkus-antora-quarkiverse</artifactId>
-        </dependency>
-
-        <!-- tag::basic-test[] -->
         <dependency>
             <groupId>io.quarkiverse.antora</groupId>
             <artifactId>quarkus-antora</artifactId>
@@ -39,32 +33,16 @@
             <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- end::basic-test[] -->
-        <!-- tag::dead-links[] -->
         <dependency>
             <groupId>io.quarkiverse.antora</groupId>
             <artifactId>quarkus-antorassured</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- end::dead-links[] -->
 
         <!-- Make sure the doc is built after the other artifacts -->
         <dependency>
             <groupId>io.quarkiverse.antora</groupId>
             <artifactId>quarkus-antora-deployment</artifactId>
-            <version>${project.version}</version>
-            <type>pom</type>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>*</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkiverse.antora</groupId>
-            <artifactId>quarkus-antora-quarkiverse-deployment</artifactId>
             <version>${project.version}</version>
             <type>pom</type>
             <scope>test</scope>

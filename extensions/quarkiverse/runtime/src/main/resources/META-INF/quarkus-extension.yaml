@@ -1,0 +1,12 @@
+name: Antora Quarkiverse
+description: Antora settings for Quarkiverse projects
+metadata:
+  keywords:
+    - antora
+    - documentation
+    - asciidoc
+    - quarkiverse
+  guide: https://quarkiverse.github.io/quarkiverse-docs/antora/dev/
+  categories:
+    - "miscellaneous"
+  status: "preview"

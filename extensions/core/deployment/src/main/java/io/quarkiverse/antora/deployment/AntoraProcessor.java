@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -17,6 +19,7 @@ import org.jboss.logging.Logger;
 import org.yaml.snakeyaml.Yaml;
 
 import io.quarkiverse.antora.FixedConfig;
+import io.quarkiverse.antora.spi.AntoraPlaybookBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -74,6 +77,7 @@ public class AntoraProcessor {
     void buildAntoraSite(
             FixedConfig fixedConfig,
             BuildSystemTargetBuildItem buildSystemTarget,
+            Optional<AntoraPlaybookBuildItem> antoraPlaybook,
             BuildProducer<GeneratedWebResourceBuildItem> staticResourceProducer) {
 
         final Path targetDir = buildSystemTarget.getOutputDirectory();
@@ -87,7 +91,7 @@ public class AntoraProcessor {
         final Path baseDir = targetDir.getParent();
 
         final Path gitRepoRoot = gitRepoRoot(baseDir);
-        final PlaybookInfo pbInfo = augmentAntoraPlaybook(gitRepoRoot, baseDir, targetDir);
+        final PlaybookInfo pbInfo = augmentAntoraPlaybook(gitRepoRoot, baseDir, targetDir, antoraPlaybook);
         final Path absAntoraPlaybookPath = pbInfo.playbookPath;
         final Path antoraPlaybookPath = gitRepoRoot.relativize(absAntoraPlaybookPath);
 
@@ -172,29 +176,39 @@ public class AntoraProcessor {
     private static PlaybookInfo augmentAntoraPlaybook(
             Path gitRepoRoot,
             Path baseDir,
-            Path targetDir) {
+            Path targetDir,
+            Optional<AntoraPlaybookBuildItem> antoraPlaybookBuildItem) {
 
         final Path augmentedAntoraPlaybookYml = targetDir.resolve("antora-playbook.yml");
 
-        final Map<String, Object> playbook;
+        Map<String, Object> playbook;
         final Yaml yaml = new Yaml();
         final Path antoraYmlPath = baseDir.resolve("antora.yml");
         final Path antoraPlaybookPath = baseDir.resolve("antora-playbook.yml");
-        if (!Files.exists(antoraPlaybookPath)) {
-            final Map<String, Object> antoraYaml;
+
+        final Map<String, Object> antoraYaml;
+        try {
+            antoraYaml = yaml.load(Files.readString(antoraYmlPath, StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new RuntimeException("Could not read " + antoraYmlPath, e);
+        }
+        playbook = defaultPlaybook(antoraYaml);
+
+        if (antoraPlaybookBuildItem.isPresent()) {
+            final Map<String, Object> buildItemPlaybook = yaml.load(antoraPlaybookBuildItem.get().getAntoraPlaybookSource());
+            playbook = mergeMaps(playbook, buildItemPlaybook);
+        }
+
+        if (Files.exists(antoraPlaybookPath)) {
             try {
-                antoraYaml = yaml.load(Files.readString(antoraYmlPath, StandardCharsets.UTF_8));
-            } catch (IOException e) {
-                throw new RuntimeException("Could not read " + antoraYmlPath, e);
-            }
-            playbook = defaultPlaybook(antoraYaml);
-        } else {
-            try {
-                playbook = yaml.load(Files.readString(antoraPlaybookPath, StandardCharsets.UTF_8));
+                final Map<String, Object> localPlaybook = yaml
+                        .load(Files.readString(antoraPlaybookPath, StandardCharsets.UTF_8));
+                playbook = mergeMaps(playbook, localPlaybook);
             } catch (IOException e) {
                 throw new RuntimeException("Could not read " + antoraPlaybookPath, e);
             }
         }
+
         final Map<String, List<Map<String, Object>>> content = (Map<String, List<Map<String, Object>>>) playbook
                 .computeIfAbsent("content",
                         k -> new LinkedHashMap<String, Object>());
@@ -203,10 +217,12 @@ public class AntoraProcessor {
         /* Fix the local sources */
         final Path newLocalUrl = augmentedAntoraPlaybookYml.getParent().relativize(gitRepoRoot);
         final Path newStartPath = gitRepoRoot.relativize(antoraYmlPath.getParent());
+        final AtomicBoolean fixed = new AtomicBoolean(false);
         sources.stream()
                 .forEach(src -> {
                     final String url = (String) src.get("url");
                     if (url.startsWith(".")) {
+                        fixed.set(true);
                         src.put("url", "./" + newLocalUrl.toString());
                         src.put("start_path", newStartPath.toString());
                     }
@@ -283,6 +299,23 @@ public class AntoraProcessor {
         Map<String, Object> result = new LinkedHashMap<>();
         for (int i = 0; i < entries.length;) {
             result.put((String) entries[i++], entries[i++]);
+        }
+        return result;
+    }
+
+    static Map<String, Object> mergeMaps(Map<String, Object> base, Map<String, Object> overlay) {
+        Map<String, Object> result = new LinkedHashMap<>(base);
+        for (Map.Entry<String, Object> entry : overlay.entrySet()) {
+            String key = entry.getKey();
+            Object overlayValue = entry.getValue();
+            Object baseValue = base.get(key);
+
+            if (baseValue instanceof Map && overlayValue instanceof Map) {
+                Map<String, Object> resultVal = mergeMaps((Map<String, Object>) baseValue, (Map<String, Object>) overlayValue);
+                result.put(key, resultVal);
+            } else {
+                result.put(key, overlayValue); // overlay replaces or adds
+            }
         }
         return result;
     }
