@@ -1,0 +1,18 @@
+site:
+  title: Quarkiverse Documentation
+  url: https://docs.quarkiverse.io
+  start_page: index::index.adoc
+ui:
+  bundle:
+    url: https://github.com/quarkiverse/antora-ui-quarkiverse/releases/latest/download/ui-bundle.zip
+    snapshot: true
+runtime:
+  fetch: true
+asciidoc:
+  attributes:
+    page-pagination: '@'
+    kroki-fetch-diagram: true
+    foo: bar
+  extensions:
+  - asciidoctor-kroki
+

@@ -1,7 +1,12 @@
 package io.quarkiverse.antora.quarkiverse;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+
 import io.quarkiverse.antora.spi.AntoraPlaybookBuildItem;
 import io.quarkus.deployment.annotations.BuildStep;
+import io.quarkus.deployment.util.IoUtil;
 
 /**
  * Adapted from
@@ -11,27 +16,11 @@ public class QuarkiverseProcessor {
 
     @BuildStep
     public AntoraPlaybookBuildItem antoraPlaybookBuildItem() {
-        return new AntoraPlaybookBuildItem(
-                /*
-                 * This is a copy of https://github.com/quarkiverse/quarkiverse-docs/blob/main/antora-playbook.yml
-                 * without sources
-                 */
-                """
-                        site:
-                          title: Quarkiverse Documentation
-                          url: https://docs.quarkiverse.io
-                        ui:
-                          bundle:
-                            url: https://github.com/quarkiverse/antora-ui-quarkiverse/releases/latest/download/ui-bundle.zip
-                            snapshot: true
-                        runtime:
-                          fetch: true
-                        asciidoc:
-                          attributes:
-                            page-pagination: '@'
-                            kroki-fetch-diagram: true
-                          extensions:
-                            - asciidoctor-kroki
-                                        """);
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream("quarkiverse-antora-playbook.yaml")) {
+            final String source = new String(IoUtil.readBytes(in), StandardCharsets.UTF_8);
+            return new AntoraPlaybookBuildItem(source);
+        } catch (IOException e) {
+            throw new RuntimeException("Could not read classpath resource quarkiverse-antora-playbook.yaml", e);
+        }
     }
 }
