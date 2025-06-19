@@ -4,7 +4,7 @@
     <parent>
         <groupId>io.quarkiverse.antora</groupId>
         <artifactId>quarkus-antora-extensions</artifactId>
-        <version>2.1.0</version>
+        <version>2.1.1-SNAPSHOT</version>
     </parent>
     <artifactId>quarkus-antora-core-parent</artifactId>
     <packaging>pom</packaging>
