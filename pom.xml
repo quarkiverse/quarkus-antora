@@ -23,6 +23,7 @@
       <tag>HEAD</tag>
   </scm>
     <properties>
+        <cq-maven-plugin.version>4.17.9</cq-maven-plugin.version>
         <compiler-plugin.version>3.14.0</compiler-plugin.version>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -33,6 +34,7 @@
         <groovy-maven-plugin.version>2.1.1</groovy-maven-plugin.version>
         <groovy.version>3.0.25</groovy.version>
         <quarkus.version>3.24.0</quarkus.version>
+        <snakeyaml.version>2.4</snakeyaml.version><!-- @sync io.quarkus:quarkus-bom:${quarkus.version} dep:org.yaml:snakeyaml -->
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -123,7 +125,17 @@
                                 </exclusion>
                             </exclusions>
                         </dependency>
+                        <dependency>
+                            <groupId>org.yaml</groupId>
+                            <artifactId>snakeyaml</artifactId>
+                            <version>${snakeyaml.version}</version>
+                        </dependency>
                     </dependencies>
+                </plugin>
+                <plugin>
+                    <groupId>org.l2x6.cq</groupId>
+                    <artifactId>cq-maven-plugin</artifactId>
+                    <version>${cq-maven-plugin.version}</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -157,6 +169,60 @@
                 <skipTests>true</skipTests>
                 <format.skip>true</format.skip>
             </properties>
+        </profile>
+        <profile>
+            <id>syncAntoraPlaybook</id>
+            <activation>
+                <property>
+                    <name>syncAntoraPlaybook</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <defaultGoal>validate</defaultGoal>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.gmaven</groupId>
+                        <artifactId>groovy-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>syncAntoraPlaybook</id>
+                                <goals>
+                                    <goal>execute</goal>
+                                </goals>
+                                <inherited>false</inherited>
+                                <phase>validate</phase>
+                                <configuration>
+                                    <!-- Copy pom.xml changing the parent version so that the destination -->
+                                    <!-- file does not change after every release -->
+                                    <source>
+                                        import java.nio.file.Files
+                                        import java.nio.file.Path
+                                        import org.yaml.snakeyaml.Yaml
+                                        import org.yaml.snakeyaml.DumperOptions
+
+                                        final String url = 'https://raw.githubusercontent.com/quarkiverse/quarkiverse-docs/refs/heads/main/antora-playbook.yml'
+                                        final Path destPath = Path.of('extensions/quarkiverse/deployment/src/main/resources/quarkiverse-antora-playbook.yaml')
+                                        final String yamlSource = url.toURL().text
+                                        final Map&lt;String, Object> data = new Yaml().load(yamlSource)
+                                        data.remove('content')
+                                        final DumperOptions options = new DumperOptions()
+                                        options.defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
+                                        final String newContent = new Yaml(options).dump(data)
+
+                                        if (!Files.exists(destPath) || !newContent.equals(destPath.getText('UTF-8'))) {
+                                            destPath.setText(newContent, 'UTF-8')
+                                            println('🚀 Updated ' + destPath.toString())
+                                        } else {
+                                            println('✅ ' + destPath.toString() + ' is up to date')
+                                        }
+                                    </source>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 </project>

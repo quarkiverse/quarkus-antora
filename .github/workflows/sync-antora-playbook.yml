@@ -1,0 +1,54 @@
+name: sync-antora-playbook
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run every day at 3AM
+    - cron:  '0 3 * * *'
+
+permissions:
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: 'maven'
+
+      - name: mvn -DsyncAntoraPlaybook -N
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./mvnw -DsyncAntoraPlaybook -N
+
+      - name: Fail if there are uncommitted changes
+        shell: bash
+        run: |
+          if [[ -z $(git status --porcelain | grep extensions/quarkiverse/deployment/src/main/resources/quarkiverse-antora-playbook.yaml) ]]; then
+            git config --local user.email "sync-antora-playbook[bot]@users.noreply.github.com"
+            git config --local user.name "sync-antora-playbook[bot]"
+            topicBranch="sync-antora-playbook"
+            git checkout -b $topicBranch
+            git add extensions/quarkiverse/deployment/src/main/resources/quarkiverse-antora-playbook.yaml
+            msg=""Synchronize quarkiverse-antora-playbook.yaml from https://raw.githubusercontent.com/quarkiverse/quarkiverse-docs/refs/heads/main/antora-playbook.yml"
+            git commit -m $msg
+            git push origin $topicBranch -f
+            gh pr create -B main -H $topicBranch --title $msg
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
