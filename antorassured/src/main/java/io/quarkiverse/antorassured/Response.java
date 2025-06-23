@@ -13,21 +13,19 @@ public class Response {
     private static final Logger log = Logger.getLogger(AntorAssured.class);
     private final String uri;
     private final int statusCode;
-    private final String statusMessage;
     private final Charset charset;
     private final String contentType;
     private final byte[] body;
     private final Map<Class<?>, Object> transfromedBodies = new ConcurrentHashMap<>();
 
     public static Response none(String baseUri) {
-        return new Response(baseUri, -1, null, null, null, null);
+        return new Response(baseUri, -1, null, null, null);
     }
 
-    Response(String uri, int statusCode, String statusMessage, Charset charset, String contentType, byte[] body) {
+    Response(String uri, int statusCode, Charset charset, String contentType, byte[] body) {
         super();
         this.uri = uri;
         this.statusCode = statusCode;
-        this.statusMessage = statusMessage;
         this.charset = charset;
         this.contentType = contentType;
         this.body = body;
@@ -39,10 +37,6 @@ public class Response {
 
     public int statusCode() {
         return statusCode;
-    }
-
-    public String statusMessage() {
-        return statusMessage;
     }
 
     public Charset charset() {

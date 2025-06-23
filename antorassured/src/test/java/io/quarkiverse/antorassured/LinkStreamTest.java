@@ -65,7 +65,7 @@ public class LinkStreamTest {
                         .stream()
                         .map(ValidationResult::toString))
                 .containsExactly(
-                        "http://localhost:8084/constant/503/1: 503 Service Unavailable, Retry-After: 1, attempted 2 times");
+                        "http://localhost:8084/constant/503/1: 503, Retry-After: 1, attempted 2 times");
     }
 
     @Test
@@ -125,18 +125,18 @@ public class LinkStreamTest {
                         .stream()
                         .map(ValidationResult::toString))
                 .containsExactlyInAnyOrder(
-                        "http://localhost:8084/constant/404/default: 404 Not Found, attempted 1 times",
-                        "http://localhost:8084/constant/401/0: 401 Unauthorized, attempted 1 times",
-                        "http://localhost:8084/constant/401/1: 401 Unauthorized, attempted 1 times",
-                        "http://localhost:8084/constant/401/2: 401 Unauthorized, attempted 1 times",
-                        "http://localhost:8084/constant/401/3: 401 Unauthorized, attempted 1 times",
-                        "http://localhost:8084/constant/401/4: 401 Unauthorized, attempted 1 times",
-                        "http://localhost:8084/constant/401/5: 401 Unauthorized, attempted 1 times",
-                        "http://localhost:8084/constant/401/6: 401 Unauthorized, attempted 1 times",
-                        "http://localhost:8084/constant/401/7: 401 Unauthorized, attempted 1 times",
-                        "http://localhost:8084/constant/401/8: 401 Unauthorized, attempted 1 times",
-                        "http://localhost:8084/constant/401/9: 401 Unauthorized, attempted 1 times");
-        listAssert.element(0).isEqualTo("http://localhost:8084/constant/404/default: 404 Not Found, attempted 1 times");
+                        "http://localhost:8084/constant/404/default: 404, attempted 1 times",
+                        "http://localhost:8084/constant/401/0: 401, attempted 1 times",
+                        "http://localhost:8084/constant/401/1: 401, attempted 1 times",
+                        "http://localhost:8084/constant/401/2: 401, attempted 1 times",
+                        "http://localhost:8084/constant/401/3: 401, attempted 1 times",
+                        "http://localhost:8084/constant/401/4: 401, attempted 1 times",
+                        "http://localhost:8084/constant/401/5: 401, attempted 1 times",
+                        "http://localhost:8084/constant/401/6: 401, attempted 1 times",
+                        "http://localhost:8084/constant/401/7: 401, attempted 1 times",
+                        "http://localhost:8084/constant/401/8: 401, attempted 1 times",
+                        "http://localhost:8084/constant/401/9: 401, attempted 1 times");
+        listAssert.element(0).isEqualTo("http://localhost:8084/constant/404/default: 404, attempted 1 times");
 
         List<? extends String> actual = new ArrayList<>(listAssert.actual());
         actual.remove(0);
@@ -286,8 +286,8 @@ public class LinkStreamTest {
                         .stream()
                         .map(ValidationResult::toString))
                 .containsExactlyInAnyOrder(
-                        "http://localhost:8084/basicAuth/anonymous: 401 Unauthorized, attempted 1 times",
-                        "http://localhost:8084/basicAuth/invalid: 401 Unauthorized, attempted 1 times");
+                        "http://localhost:8084/basicAuth/anonymous: 401, attempted 1 times",
+                        "http://localhost:8084/basicAuth/invalid: 401, attempted 1 times");
 
         List<String> accessLog = Arrays.asList(RestAssured.get("http://localhost:8084/accessLog")
                 .then()
@@ -326,8 +326,8 @@ public class LinkStreamTest {
                         .stream()
                         .map(ValidationResult::toString))
                 .containsExactlyInAnyOrder(
-                        "http://localhost:8084/bearerToken/anonymous: 401 Unauthorized, attempted 1 times",
-                        "http://localhost:8084/bearerToken/invalid: 401 Unauthorized, attempted 1 times");
+                        "http://localhost:8084/bearerToken/anonymous: 401, attempted 1 times",
+                        "http://localhost:8084/bearerToken/invalid: 401, attempted 1 times");
 
         List<String> accessLog = Arrays.asList(RestAssured.get("http://localhost:8084/accessLog")
                 .then()
@@ -567,11 +567,11 @@ public class LinkStreamTest {
                     statusCode = 401;
                 }
             }
-            accessLogger.accept(context, statusCode);
             context.response()
                     .setStatusCode(statusCode)
                     .putHeader("Retry-After", context.pathParam("retryAfter"))
                     .end("");
+            accessLogger.accept(context, statusCode);
         });
 
         router.get("/bearerToken/:random").handler(context -> {
