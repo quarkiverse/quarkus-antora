@@ -164,7 +164,6 @@ public interface LinkValidator {
                     final Response response = new Response(
                             fragmentlessUri,
                             statusCode,
-                            resp.statusMessage(),
                             charset(resp.charset()),
                             resp.contentType(),
                             resp.bodyAsBytes());
@@ -182,17 +181,18 @@ public interface LinkValidator {
                             final long retryAtSystemTimeMs = parseRetryAfter(rawRetryAfter, Clock.systemUTC());
                             return CacheEntry.retry(
                                     response,
-                                    statusCode + " " + resp.statusMessage() + ", Retry-After: " + rawRetryAfter,
+                                    statusCode + ", Retry-After: " + rawRetryAfter,
                                     retryAtSystemTimeMs, attempt);
                         default:
-                            return CacheEntry.invalid(response, "" + statusCode + " " + resp.statusMessage(), attempt);
+                            return CacheEntry.invalid(response, "" + statusCode, attempt);
                     }
                 } catch (java.net.ConnectException e) {
-                    return CacheEntry.invalid(Response.none(fragmentlessUri), "Unable to connect: " + e.getMessage());
+                    return CacheEntry.invalid(Response.none(fragmentlessUri),
+                            e.getMessage() != null ? "Unable to connect: " + e.getMessage() : "Unable to connect");
                 } catch (java.net.UnknownHostException e) {
                     return CacheEntry.invalid(Response.none(fragmentlessUri), "Unknown host " + e.getMessage());
                 } catch (org.jsoup.HttpStatusException e) {
-                    return CacheEntry.invalid(new Response(fragmentlessUri, e.getStatusCode(), null, null, null, null),
+                    return CacheEntry.invalid(new Response(fragmentlessUri, e.getStatusCode(), null, null, null),
                             "" + e.getStatusCode());
                 } catch (Exception e) {
                     StringWriter sw = new StringWriter();

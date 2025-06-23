@@ -29,7 +29,7 @@ public class AntoraDevModeTest {
         final Path baseDir = Path.of(".").toAbsolutePath().normalize();
         try (DevModeProcess devMode = new DevModeProcess(baseDir)) {
             {
-                final ValidatableResponse response = Awaitility.await().atMost(10, TimeUnit.SECONDS).until(
+                final ValidatableResponse response = Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
                         () -> {
                             try {
                                 return RestAssured

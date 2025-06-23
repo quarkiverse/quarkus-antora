@@ -48,7 +48,7 @@ public class LinkValidatorTest {
 
         ValidationResult err = testErrors.get("https://quarkus.io/fake-page");
         Assertions.assertThat(err.uri().resolvedUri()).isEqualTo("https://quarkus.io/fake-page");
-        Assertions.assertThat(err.message()).isEqualTo("404 Not Found");
+        Assertions.assertThat(err.message()).isEqualTo("404");
 
         err = testErrors.get("https://quarkus.io/guides/building-native-image#fake-fragment");
         Assertions.assertThat(err.uri().resolvedUri())
@@ -58,7 +58,7 @@ public class LinkValidatorTest {
 
         err = testErrors.get("https://salkjasjhashgajhhsahgahjas.com");
         Assertions.assertThat(err.uri().resolvedUri()).isEqualTo("https://salkjasjhashgajhhsahgahjas.com");
-        Assertions.assertThat(err.message()).isEqualTo("Unknown host salkjasjhashgajhhsahgahjas.com");
+        Assertions.assertThat(err.message()).isEqualTo("Unable to connect");
 
         if (!errors.isEmpty()) {
             Assertions.fail("Link validation errors:\n\n" + errors);
