@@ -70,4 +70,4 @@ package-lock.json
 .npm/
 
 # Antora
-antora-cache/**
+/antora-cache/
