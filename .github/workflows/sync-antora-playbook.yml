@@ -6,10 +6,6 @@ on:
     # Run every day at 3AM
     - cron:  '0 3 * * *'
 
-permissions:
-  pull-requests: write
-  contents: write
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -23,7 +19,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        name: Create GitHub App Token
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -33,9 +39,9 @@ jobs:
 
       - name: mvn -DsyncAntoraPlaybook -N
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          ./mvnw -DsyncAntoraPlaybook -N
+          ./mvnw -DsyncAntoraPlaybook -N -ntp
 
       - name: Commit the changes in quarkiverse-antora-playbook.yaml and send a PR
         shell: bash
@@ -55,4 +61,4 @@ jobs:
             gh pr create -B main -H $topicBranch --title "Synchronize quarkiverse-antora-playbook.yaml" --body "$msg"
           fi
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
