@@ -12,7 +12,5 @@ asciidoc:
   attributes:
     page-pagination: '@'
     kroki-fetch-diagram: true
-    foo: bar
   extensions:
   - asciidoctor-kroki
-
