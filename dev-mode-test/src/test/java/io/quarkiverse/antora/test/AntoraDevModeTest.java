@@ -64,6 +64,15 @@ public class AntoraDevModeTest {
                         .isNotEmpty();
             }
 
+            /* Make sure the @antora/lunr-extension has generated the search index */
+            RestAssured
+                    .given()
+                    .contentType(ContentType.HTML)
+                    .get("http://localhost:8080/search-index.js")
+                    .then()
+                    .statusCode(200)
+                    .body(CoreMatchers.containsString("\"lorem\""));
+
             /* Make sure new.adoc does not exist yet */
             RestAssured
                     .given()
@@ -74,7 +83,7 @@ public class AntoraDevModeTest {
 
             /* Add new.adoc */
             Path newFile = baseDir.resolve("modules/ROOT/pages/new.adoc");
-            String uniqueContent = UUID.randomUUID().toString();
+            String uniqueContent = UUID.randomUUID().toString().replace("-", "");
             try {
                 Files.writeString(newFile, "= New Page\n\n" + uniqueContent, StandardCharsets.UTF_8);
                 {
@@ -93,6 +102,15 @@ public class AntoraDevModeTest {
                             },
                             resp -> resp != null && resp.extract().statusCode() == 200);
                     response.body(CoreMatchers.containsString(uniqueContent));
+
+                    /* Make sure the @antora/lunr-extension has regenerated the search index and uniqueContent is included */
+                    RestAssured
+                            .given()
+                            .contentType(ContentType.HTML)
+                            .get("http://localhost:8080/search-index.js")
+                            .then()
+                            .statusCode(200)
+                            .body(CoreMatchers.containsString("\"" + uniqueContent + "\""));
                 }
 
                 /* Add an invalid link to new.adoc */
@@ -154,6 +172,14 @@ public class AntoraDevModeTest {
                         }
                     },
                     resp -> resp != null && resp.extract().statusCode() == 404);
+            /* Make sure the @antora/lunr-extension has regenerated the search index and uniqueContent is not there anymore */
+            RestAssured
+                    .given()
+                    .contentType(ContentType.HTML)
+                    .get("http://localhost:8080/search-index.js")
+                    .then()
+                    .statusCode(200)
+                    .body(CoreMatchers.not(CoreMatchers.containsString("\"" + uniqueContent + "\"")));
 
             /* Live edit supplemental-ui */
             {
