@@ -100,9 +100,11 @@ and so that the site is generated under `target/classes/META-INF/antora`.
 You can always check the result of the transformation under `target/antora-playbook.yml`.
 ====
 
-=== Antora extensions
+=== Antora extensions and AsciiDoc extensions
 
-In case there are any Antora extensions, such as `https://github.com/asciidoctor/asciidoctor-kroki[asciidoctor-kroki]` declared in your `antora-playbook.yml`,
+In case there are any Antora extensions, such as `https://gitlab.com/antora/antora-lunr-extension[@antora/lunr-extension]`
+or https://docs.antora.org/antora/latest/playbook/asciidoc-extensions/[AsciiDoc extensions], such as `https://github.com/asciidoctor/asciidoctor-kroki[asciidoctor-kroki]`,
+declared in your `antora-playbook.yml`,
 then `quarkus-antora` will install them using `npm i <extension-1>[ <extension-2>[ ...]]` inside the Antora container before invoking `antora`.
 
 [WARNING]

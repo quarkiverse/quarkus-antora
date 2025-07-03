@@ -254,6 +254,25 @@ public class AntoraProcessor {
                 ((List<String>) extensions).stream().forEach(extensionConsumer);
             }
         }
+        final Object antora = playbook.get("antora");
+        if (antora instanceof Map) {
+            final Object extensions = ((Map<String, Object>) antora).get("extensions");
+            if (extensions instanceof List) {
+                ((List<Object>) extensions).stream()
+                        .map(node -> {
+                            if (node instanceof String) {
+                                return (String) node;
+                            } else if (node instanceof Map) {
+                                Map<String, Object> o = (Map<String, Object>) node;
+                                return (String) o.get("require");
+                            } else {
+                                throw new IllegalStateException(
+                                        "Expected a string or object, but found " + node.getClass().getName());
+                            }
+                        })
+                        .forEach(extensionConsumer);
+            }
+        }
     }
 
     static void handleSupplementalFiles(Map<String, Object> playbook,
