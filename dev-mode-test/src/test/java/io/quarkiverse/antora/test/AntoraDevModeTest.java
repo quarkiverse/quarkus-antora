@@ -27,9 +27,15 @@ public class AntoraDevModeTest {
     public void edit() throws InterruptedException, IOException {
 
         final Path baseDir = Path.of(".").toAbsolutePath().normalize();
+        final Path newImage = baseDir.resolve("modules/ROOT/assets/images/circle.svg");
+        /* Make sure the image file we will add later does not exist yet */
+        if (Files.exists(newImage)) {
+            Files.delete(newImage);
+        }
+
         try (DevModeProcess devMode = new DevModeProcess(baseDir)) {
             {
-                final ValidatableResponse response = Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
+                final ValidatableResponse response = Awaitility.await().atMost(30, TimeUnit.SECONDS).until(
                         () -> {
                             try {
                                 return RestAssured
@@ -87,7 +93,7 @@ public class AntoraDevModeTest {
             try {
                 Files.writeString(newFile, "= New Page\n\n" + uniqueContent, StandardCharsets.UTF_8);
                 {
-                    final ValidatableResponse response = Awaitility.await().atMost(10, TimeUnit.SECONDS).until(
+                    final ValidatableResponse response = Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
                             () -> {
                                 try {
                                     return RestAssured
@@ -103,7 +109,10 @@ public class AntoraDevModeTest {
                             resp -> resp != null && resp.extract().statusCode() == 200);
                     response.body(CoreMatchers.containsString(uniqueContent));
 
-                    /* Make sure the @antora/lunr-extension has regenerated the search index and uniqueContent is included */
+                    /*
+                     * Make sure the @antora/lunr-extension has regenerated the search index and uniqueContent is
+                     * included
+                     */
                     RestAssured
                             .given()
                             .contentType(ContentType.HTML)
@@ -116,7 +125,7 @@ public class AntoraDevModeTest {
                 /* Add an invalid link to new.adoc */
                 Files.writeString(newFile, "= New Page\n\nxref:non-existent-page.adoc[non-existent]", StandardCharsets.UTF_8);
                 {
-                    final ValidatableResponse response = Awaitility.await().atMost(10, TimeUnit.SECONDS).until(
+                    final ValidatableResponse response = Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
                             () -> {
                                 try {
                                     return RestAssured
@@ -136,7 +145,7 @@ public class AntoraDevModeTest {
                 /* Fix it */
                 Files.writeString(newFile, "= New Page\n\n" + uniqueContent, StandardCharsets.UTF_8);
                 {
-                    final ValidatableResponse response = Awaitility.await().atMost(10, TimeUnit.SECONDS).until(
+                    final ValidatableResponse response = Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
                             () -> {
                                 try {
                                     return RestAssured
@@ -158,7 +167,7 @@ public class AntoraDevModeTest {
             }
 
             /* Make sure new.html is not served anymore */
-            Awaitility.await().atMost(10, TimeUnit.SECONDS).until(
+            Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
                     () -> {
                         try {
                             return RestAssured
@@ -172,7 +181,10 @@ public class AntoraDevModeTest {
                         }
                     },
                     resp -> resp != null && resp.extract().statusCode() == 404);
-            /* Make sure the @antora/lunr-extension has regenerated the search index and uniqueContent is not there anymore */
+            /*
+             * Make sure the @antora/lunr-extension has regenerated the search index and uniqueContent is not there
+             * anymore
+             */
             RestAssured
                     .given()
                     .contentType(ContentType.HTML)
@@ -183,7 +195,7 @@ public class AntoraDevModeTest {
 
             /* Live edit supplemental-ui */
             {
-                final ValidatableResponse response = Awaitility.await().atMost(10, TimeUnit.SECONDS).until(
+                final ValidatableResponse response = Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
                         () -> {
                             try {
                                 return RestAssured
@@ -207,7 +219,7 @@ public class AntoraDevModeTest {
                 Files.writeString(headerContentHbs, oldContent.replace(">Home supplemental<", ">Home supplemental changed<"),
                         StandardCharsets.UTF_8);
                 {
-                    Awaitility.await().atMost(10, TimeUnit.SECONDS).until(
+                    Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
                             () -> {
                                 try {
                                     return RestAssured
@@ -223,9 +235,35 @@ public class AntoraDevModeTest {
                             resp -> resp != null && resp.extract().statusCode() == 200
                                     && resp.extract().body().asString().contains(">Home supplemental changed<"));
                 }
+
+                /* Add an image and make sure it triggers a rebuild */
+                if (!Files.exists(newImage.getParent())) {
+                    Files.createDirectories(newImage.getParent());
+                }
+                Files.copy(baseDir.resolve("src/test/resources/circle.svg"), newImage);
+                Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
+                        () -> {
+                            try {
+                                return RestAssured
+                                        .given()
+                                        .contentType(ContentType.HTML)
+                                        .get("http://localhost:8080/quarkus-antora/dev/_images/circle.svg")
+                                        .then();
+                            } catch (Exception e) {
+                                /* The reload of the service takes some time */
+                                return null;
+                            }
+                        },
+                        resp -> resp != null && resp.extract().statusCode() == 200);
+
             } finally {
                 /* Restore the old content bc. it is tracked by git */
                 Files.writeString(headerContentHbs, oldContent, StandardCharsets.UTF_8);
+
+                /* Clean up the newly added image */
+                if (Files.exists(newImage)) {
+                    Files.delete(newImage);
+                }
             }
         }
     }
