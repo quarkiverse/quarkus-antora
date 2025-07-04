@@ -71,3 +71,4 @@ package-lock.json
 
 # Antora
 /antora-cache/
+.asciidoctorconfig.adoc
