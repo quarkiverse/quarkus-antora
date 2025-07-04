@@ -8,7 +8,7 @@
     </parent>
     <groupId>io.quarkiverse.antora</groupId>
     <artifactId>quarkus-antora-parent</artifactId>
-    <version>2.1.1-SNAPSHOT</version>
+    <version>2.2.0</version>
     <packaging>pom</packaging>
     <name>Quarkus Antora - Parent</name>
     <modules>
@@ -20,7 +20,7 @@
         <connection>scm:git:git@github.com:quarkiverse/quarkus-antora.git</connection>
         <developerConnection>scm:git:git@github.com:quarkiverse/quarkus-antora.git</developerConnection>
         <url>https://github.com/quarkiverse/quarkus-antora</url>
-      <tag>HEAD</tag>
+      <tag>2.2.0</tag>
   </scm>
     <properties>
         <cq-maven-plugin.version>4.17.9</cq-maven-plugin.version>
@@ -204,7 +204,7 @@
                                         final String url = 'https://raw.githubusercontent.com/quarkiverse/quarkiverse-docs/refs/heads/main/antora-playbook.yml'
                                         final Path destPath = Path.of('extensions/quarkiverse/deployment/src/main/resources/quarkiverse-antora-playbook.yaml')
                                         final String yamlSource = url.toURL().text
-                                        final Map&lt;String, Object> data = new Yaml().load(yamlSource)
+                                        final Map&lt;String, Object&gt; data = new Yaml().load(yamlSource)
                                         data.remove('content')
                                         final DumperOptions options = new DumperOptions()
                                         options.defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
@@ -212,7 +212,7 @@
 
                                         if (!Files.exists(destPath) || !newContent.equals(destPath.getText('UTF-8'))) {
                                             destPath.setText(newContent, 'UTF-8')
-                                            println('🚀 Updated ' + destPath.toString())
+                                            println('&#x1f680; Updated ' + destPath.toString())
                                         } else {
                                             println('✅ ' + destPath.toString() + ' is up to date')
                                         }
