@@ -8,7 +8,7 @@
     </parent>
     <groupId>io.quarkiverse.antora</groupId>
     <artifactId>quarkus-antora-parent</artifactId>
-    <version>2.3.0.CR1</version>
+    <version>2.3.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Quarkus Antora - Parent</name>
     <modules>
@@ -20,7 +20,7 @@
         <connection>scm:git:git@github.com:quarkiverse/quarkus-antora.git</connection>
         <developerConnection>scm:git:git@github.com:quarkiverse/quarkus-antora.git</developerConnection>
         <url>https://github.com/quarkiverse/quarkus-antora</url>
-      <tag>2.3.0.CR1</tag>
+      <tag>HEAD</tag>
   </scm>
     <properties>
         <cq-maven-plugin.version>4.17.9</cq-maven-plugin.version>
