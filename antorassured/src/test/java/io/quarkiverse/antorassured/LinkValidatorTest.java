@@ -28,10 +28,10 @@ public class LinkValidatorTest {
         final LinkValidator validator = LinkValidator.defaultValidator();
         validator.validate(req("https://quarkus.io/guides/building-native-image#prerequisites")).assertValid();
 
-        Assertions.assertThatThrownBy(() -> validator.validate(
+        validator.validate(
                 req(
                         "http://docs.oasis-open.org/ws-sx/ws-securitypolicy/v1.2/errata01/os/ws-securitypolicy-1.2-errata01-os-complete.html#_Toc325572744"))
-                .assertValid()).hasMessageContaining("CertificateExpiredException: NotAfter: Fri Sep ");
+                .assertValid();
 
     }
 
