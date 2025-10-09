@@ -23,7 +23,7 @@
       <tag>HEAD</tag>
   </scm>
     <properties>
-        <cq-maven-plugin.version>4.20.1</cq-maven-plugin.version>
+        <cq-maven-plugin.version>4.20.2</cq-maven-plugin.version>
         <compiler-plugin.version>3.14.1</compiler-plugin.version>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
