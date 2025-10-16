@@ -33,7 +33,7 @@
         <jsoup.version>1.21.2</jsoup.version>
         <groovy-maven-plugin.version>2.1.1</groovy-maven-plugin.version>
         <groovy.version>3.0.25</groovy.version>
-        <quarkus.version>3.28.3</quarkus.version>
+        <quarkus.version>3.28.4</quarkus.version>
         <snakeyaml.version>2.5</snakeyaml.version><!-- @sync io.quarkus:quarkus-bom:${quarkus.version} dep:org.yaml:snakeyaml -->
     </properties>
     <dependencyManagement>
