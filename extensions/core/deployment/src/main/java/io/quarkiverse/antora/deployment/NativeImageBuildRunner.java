@@ -25,7 +25,9 @@ import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Assertions;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 
 import io.quarkus.deployment.util.ContainerRuntimeUtil;
 import io.quarkus.deployment.util.FileUtil;
@@ -183,14 +185,14 @@ public class NativeImageBuildRunner {
         }
     }
 
-    private static class AntoraFrameConsumer {
+    static class AntoraFrameConsumer {
 
         private final ObjectMapper mapper;
-        private final List<AntoraFrame> frames = new ArrayList<>();
+        final List<AntoraFrame> frames = new ArrayList<>();
         private final Map<String, JsonProcessingException> exceptions = new LinkedHashMap<>();
 
         public AntoraFrameConsumer() {
-            mapper = new ObjectMapper();
+            mapper = JsonMapper.builder().enable(StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION).build();
         }
 
         public void accept(String rawFrame) {
@@ -253,7 +255,7 @@ public class NativeImageBuildRunner {
         String name;
         AntoraFile file;
         AntoraSource source;
-        String msg;
+        Object msg;
         String hint;
         List<AntoraStackFrame> stack;
 
@@ -278,7 +280,14 @@ public class NativeImageBuildRunner {
         }
 
         public String getMsg() {
-            return msg;
+            return msg instanceof String ? (String) msg : null;
+        }
+
+        public Err getErr() {
+            if (msg instanceof Map) {
+                return Err.of((Map<String, Object>) msg);
+            }
+            return null;
         }
 
         public List<AntoraStackFrame> getStack() {
@@ -348,6 +357,35 @@ public class NativeImageBuildRunner {
 
             public int getLine() {
                 return line;
+            }
+        }
+
+        static class Err {
+            static Err of(Map<String, Object> map) {
+                return new Err((String) map.get("package"), (String) map.get("message"), (String) map.get("stack"));
+            }
+
+            public Err(String package_, String message, String stack) {
+                super();
+                this.package_ = package_;
+                this.message = message;
+                this.stack = stack;
+            }
+
+            final String package_;
+            final String message;
+            final String stack;
+
+            public String getPackage() {
+                return package_;
+            }
+
+            public String getMessage() {
+                return message;
+            }
+
+            public String getStack() {
+                return stack;
             }
         }
 
