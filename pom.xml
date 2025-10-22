@@ -35,6 +35,7 @@
         <groovy.version>3.0.25</groovy.version>
         <quarkus.version>3.28.3</quarkus.version>
         <snakeyaml.version>2.5</snakeyaml.version><!-- @sync io.quarkus:quarkus-bom:${quarkus.version} dep:org.yaml:snakeyaml -->
+        <testcontainers.version>1.21.3</testcontainers.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -86,6 +87,11 @@
                 <artifactId>assertj-core</artifactId>
                 <version>${assertj.version}</version>
                 <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${testcontainers.version}</version>
             </dependency>
 
         </dependencies>

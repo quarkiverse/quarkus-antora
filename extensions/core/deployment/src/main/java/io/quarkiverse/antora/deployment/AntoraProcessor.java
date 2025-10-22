@@ -103,7 +103,7 @@ public class AntoraProcessor {
             }
         }
 
-        buildWithContainer(fixedConfig.image(), gitRepoRoot, antoraPlaybookPath, pbInfo.npmPackages());
+        buildWithContainer(fixedConfig, gitRepoRoot, antoraPlaybookPath, pbInfo.npmPackages());
 
         try (Stream<Path> files = Files.walk(pbInfo.outDir)) {
             files.forEach(absP -> {
@@ -150,10 +150,11 @@ public class AntoraProcessor {
 
     }
 
-    private void buildWithContainer(String antoraImageName, final Path gitRepoRoot, final Path antoraPlaybookPath,
+    private void buildWithContainer(FixedConfig fixedConfig, final Path gitRepoRoot, final Path antoraPlaybookPath,
             List<String> npmPackages) {
         try {
-            new NativeImageBuildRunner().build(antoraImageName, gitRepoRoot, antoraPlaybookPath, npmPackages);
+            new NativeImageBuildRunner().build(fixedConfig.image(), fixedConfig.containerNetwork(), gitRepoRoot,
+                    antoraPlaybookPath, npmPackages);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (IOException e) {

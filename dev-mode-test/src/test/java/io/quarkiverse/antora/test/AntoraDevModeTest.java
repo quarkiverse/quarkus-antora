@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.assertj.core.api.Assertions;
@@ -14,14 +15,24 @@ import org.awaitility.Awaitility;
 import org.hamcrest.CoreMatchers;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.ValidatableResponse;
 
+@Testcontainers
 public class AntoraDevModeTest {
 
     private static final Logger log = Logger.getLogger(AntoraDevModeTest.class);
+
+    @Container
+    private static final GenericContainer<?> KROKI_CONTAINER = new GenericContainer<>("mirror.gcr.io/yuzutech/kroki:0.28.0")
+            .withExposedPorts(8000)
+            .waitingFor(Wait.forListeningPorts(8000));
 
     @Test
     public void edit() throws InterruptedException, IOException {
@@ -33,193 +44,16 @@ public class AntoraDevModeTest {
             Files.delete(newImage);
         }
 
-        try (DevModeProcess devMode = new DevModeProcess(baseDir)) {
-            {
-                final ValidatableResponse response = Awaitility.await().atMost(30, TimeUnit.SECONDS).until(
-                        () -> {
-                            try {
-                                return RestAssured
-                                        .given()
-                                        .contentType(ContentType.HTML)
-                                        .get("http://localhost:8080/quarkus-antora/dev/index.html")
-                                        .then();
-                            } catch (Exception e) {
-                                /* The reload of the service takes some time */
-                                return null;
-                            }
-                        },
-                        resp -> {
-                            log.info("resp " + (resp != null ? resp.extract().statusCode() : ""));
-                            return resp != null && resp.extract().statusCode() == 200;
-                        });
-                response
-                        .body(CoreMatchers.containsString("<h1 class=\"page\">Lorem ipsum</h1>"));
-            }
-
-            /* Make sure the SVG file for the UML diagram was generated */
-            final Path imagesDir = baseDir.resolve("target/classes/META-INF/antora/quarkus-antora/dev/_images");
-            Assertions.assertThat(imagesDir).isDirectory();
-            try (Stream<Path> files = Files.list(imagesDir)) {
-                final Optional<String> svgFile = files
-                        .map(Path::getFileName)
-                        .map(Path::toString)
-                        .filter(fn -> fn.startsWith("alice-and-bob-") && fn.endsWith(".svg"))
-                        .findFirst();
-                Assertions.assertThat(svgFile)
-                        .withFailMessage(() -> "Expected " + imagesDir.toString() + "/alice-and-bob-*.svg to exist")
-                        .isNotEmpty();
-            }
-
-            /* Make sure the @antora/lunr-extension has generated the search index */
-            RestAssured
-                    .given()
-                    .contentType(ContentType.HTML)
-                    .get("http://localhost:8080/search-index.js")
-                    .then()
-                    .statusCode(200)
-                    .body(CoreMatchers.containsString("\"lorem\""));
-
-            /* Make sure new.adoc does not exist yet */
-            RestAssured
-                    .given()
-                    .contentType(ContentType.HTML)
-                    .get("http://localhost:8080/quarkus-antora/dev/new.html")
-                    .then()
-                    .statusCode(404);
-
-            /* Add new.adoc */
-            Path newFile = baseDir.resolve("modules/ROOT/pages/new.adoc");
-            String uniqueContent = UUID.randomUUID().toString().replace("-", "");
-            try {
-                Files.writeString(newFile, "= New Page\n\n" + uniqueContent, StandardCharsets.UTF_8);
+        /* Better use a local kroki container because https://kroki.io/ has traffic limits */
+        final Path antoraPlaybookYmlPath = baseDir.resolve("antora-playbook.yml");
+        final String originalPlaybookContent = Files.readString(antoraPlaybookYmlPath, StandardCharsets.UTF_8);
+        final String newPlaybookContent = Pattern.compile("kroki-server-url:.*").matcher(originalPlaybookContent).replaceAll(
+                "kroki-server-url: http://" + KROKI_CONTAINER.getHost() + ":" + KROKI_CONTAINER.getMappedPort(8000));
+        try {
+            Files.writeString(antoraPlaybookYmlPath, newPlaybookContent, StandardCharsets.UTF_8);
+            try (DevModeProcess devMode = new DevModeProcess(baseDir)) {
                 {
-                    final ValidatableResponse response = Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
-                            () -> {
-                                try {
-                                    return RestAssured
-                                            .given()
-                                            .contentType(ContentType.HTML)
-                                            .get("http://localhost:8080/quarkus-antora/dev/new.html")
-                                            .then();
-                                } catch (Exception e) {
-                                    /* The reload of the service takes some time */
-                                    return null;
-                                }
-                            },
-                            resp -> resp != null && resp.extract().statusCode() == 200);
-                    response.body(CoreMatchers.containsString(uniqueContent));
-
-                    /*
-                     * Make sure the @antora/lunr-extension has regenerated the search index and uniqueContent is
-                     * included
-                     */
-                    RestAssured
-                            .given()
-                            .contentType(ContentType.HTML)
-                            .get("http://localhost:8080/search-index.js")
-                            .then()
-                            .statusCode(200)
-                            .body(CoreMatchers.containsString("\"" + uniqueContent + "\""));
-                }
-
-                /* Add an invalid link to new.adoc */
-                Files.writeString(newFile, "= New Page\n\nxref:non-existent-page.adoc[non-existent]", StandardCharsets.UTF_8);
-                {
-                    final ValidatableResponse response = Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
-                            () -> {
-                                try {
-                                    return RestAssured
-                                            .given()
-                                            .contentType(ContentType.HTML)
-                                            .get("http://localhost:8080/quarkus-antora/dev/new.html")
-                                            .then();
-                                } catch (Exception e) {
-                                    /* The reload of the service takes some time */
-                                    return null;
-                                }
-                            },
-                            resp -> resp != null && resp.extract().statusCode() == 500);
-                    response.body(CoreMatchers.containsString("target of xref not found: non-existent-page.adoc"));
-                }
-
-                /* Fix it */
-                Files.writeString(newFile, "= New Page\n\n" + uniqueContent, StandardCharsets.UTF_8);
-                {
-                    final ValidatableResponse response = Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
-                            () -> {
-                                try {
-                                    return RestAssured
-                                            .given()
-                                            .contentType(ContentType.HTML)
-                                            .get("http://localhost:8080/quarkus-antora/dev/new.html")
-                                            .then();
-                                } catch (Exception e) {
-                                    /* The reload of the service takes some time */
-                                    return null;
-                                }
-                            },
-                            resp -> resp != null && resp.extract().statusCode() == 200);
-                    response.body(CoreMatchers.containsString(uniqueContent));
-                }
-
-            } finally {
-                Files.deleteIfExists(newFile);
-            }
-
-            /* Make sure new.html is not served anymore */
-            Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
-                    () -> {
-                        try {
-                            return RestAssured
-                                    .given()
-                                    .contentType(ContentType.HTML)
-                                    .get("http://localhost:8080/quarkus-antora/dev/new.html")
-                                    .then();
-                        } catch (Exception e) {
-                            /* The reload of the service takes some time */
-                            return null;
-                        }
-                    },
-                    resp -> resp != null && resp.extract().statusCode() == 404);
-            /*
-             * Make sure the @antora/lunr-extension has regenerated the search index and uniqueContent is not there
-             * anymore
-             */
-            RestAssured
-                    .given()
-                    .contentType(ContentType.HTML)
-                    .get("http://localhost:8080/search-index.js")
-                    .then()
-                    .statusCode(200)
-                    .body(CoreMatchers.not(CoreMatchers.containsString("\"" + uniqueContent + "\"")));
-
-            /* Live edit supplemental-ui */
-            {
-                final ValidatableResponse response = Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
-                        () -> {
-                            try {
-                                return RestAssured
-                                        .given()
-                                        .contentType(ContentType.HTML)
-                                        .get("http://localhost:8080/quarkus-antora/dev/index.html")
-                                        .then();
-                            } catch (Exception e) {
-                                /* The reload of the service takes some time */
-                                return null;
-                            }
-                        },
-                        resp -> resp != null && resp.extract().statusCode() == 200);
-                response
-                        .body(CoreMatchers.containsString(">Home supplemental<"));
-            }
-            final Path headerContentHbs = baseDir.resolve("supplemental-ui/partials/header-content.hbs");
-            final String oldContent = Files.readString(headerContentHbs, StandardCharsets.UTF_8);
-            try {
-                Assertions.assertThat(oldContent).contains(">Home supplemental<");
-                Files.writeString(headerContentHbs, oldContent.replace(">Home supplemental<", ">Home supplemental changed<"),
-                        StandardCharsets.UTF_8);
-                {
-                    Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
+                    final ValidatableResponse response = Awaitility.await().atMost(30, TimeUnit.SECONDS).until(
                             () -> {
                                 try {
                                     return RestAssured
@@ -232,39 +66,228 @@ public class AntoraDevModeTest {
                                     return null;
                                 }
                             },
-                            resp -> resp != null && resp.extract().statusCode() == 200
-                                    && resp.extract().body().asString().contains(">Home supplemental changed<"));
+                            resp -> {
+                                log.info("resp " + (resp != null ? resp.extract().statusCode() : ""));
+                                return resp != null && resp.extract().statusCode() == 200;
+                            });
+                    response
+                            .body(CoreMatchers.containsString("<h1 class=\"page\">Lorem ipsum</h1>"));
                 }
 
-                /* Add an image and make sure it triggers a rebuild */
-                if (!Files.exists(newImage.getParent())) {
-                    Files.createDirectories(newImage.getParent());
+                /* Make sure the SVG file for the UML diagram was generated */
+                final Path imagesDir = baseDir.resolve("target/classes/META-INF/antora/quarkus-antora/dev/_images");
+                Assertions.assertThat(imagesDir).isDirectory();
+                try (Stream<Path> files = Files.list(imagesDir)) {
+                    final Optional<String> svgFile = files
+                            .map(Path::getFileName)
+                            .map(Path::toString)
+                            .filter(fn -> fn.startsWith("alice-and-bob-") && fn.endsWith(".svg"))
+                            .findFirst();
+                    Assertions.assertThat(svgFile)
+                            .withFailMessage(() -> "Expected " + imagesDir.toString() + "/alice-and-bob-*.svg to exist")
+                            .isNotEmpty();
                 }
-                Files.copy(baseDir.resolve("src/test/resources/circle.svg"), newImage);
+
+                /* Make sure the @antora/lunr-extension has generated the search index */
+                RestAssured
+                        .given()
+                        .contentType(ContentType.HTML)
+                        .get("http://localhost:8080/search-index.js")
+                        .then()
+                        .statusCode(200)
+                        .body(CoreMatchers.containsString("\"lorem\""));
+
+                /* Make sure new.adoc does not exist yet */
+                RestAssured
+                        .given()
+                        .contentType(ContentType.HTML)
+                        .get("http://localhost:8080/quarkus-antora/dev/new.html")
+                        .then()
+                        .statusCode(404);
+
+                /* Add new.adoc */
+                Path newFile = baseDir.resolve("modules/ROOT/pages/new.adoc");
+                String uniqueContent = UUID.randomUUID().toString().replace("-", "");
+                try {
+                    Files.writeString(newFile, "= New Page\n\n" + uniqueContent, StandardCharsets.UTF_8);
+                    {
+                        final ValidatableResponse response = Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
+                                () -> {
+                                    try {
+                                        return RestAssured
+                                                .given()
+                                                .contentType(ContentType.HTML)
+                                                .get("http://localhost:8080/quarkus-antora/dev/new.html")
+                                                .then();
+                                    } catch (Exception e) {
+                                        /* The reload of the service takes some time */
+                                        return null;
+                                    }
+                                },
+                                resp -> resp != null && resp.extract().statusCode() == 200);
+                        response.body(CoreMatchers.containsString(uniqueContent));
+
+                        /*
+                         * Make sure the @antora/lunr-extension has regenerated the search index and uniqueContent is
+                         * included
+                         */
+                        RestAssured
+                                .given()
+                                .contentType(ContentType.HTML)
+                                .get("http://localhost:8080/search-index.js")
+                                .then()
+                                .statusCode(200)
+                                .body(CoreMatchers.containsString("\"" + uniqueContent + "\""));
+                    }
+
+                    /* Add an invalid link to new.adoc */
+                    Files.writeString(newFile, "= New Page\n\nxref:non-existent-page.adoc[non-existent]",
+                            StandardCharsets.UTF_8);
+                    {
+                        final ValidatableResponse response = Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
+                                () -> {
+                                    try {
+                                        return RestAssured
+                                                .given()
+                                                .contentType(ContentType.HTML)
+                                                .get("http://localhost:8080/quarkus-antora/dev/new.html")
+                                                .then();
+                                    } catch (Exception e) {
+                                        /* The reload of the service takes some time */
+                                        return null;
+                                    }
+                                },
+                                resp -> resp != null && resp.extract().statusCode() == 500);
+                        response.body(CoreMatchers.containsString("target of xref not found: non-existent-page.adoc"));
+                    }
+
+                    /* Fix it */
+                    Files.writeString(newFile, "= New Page\n\n" + uniqueContent, StandardCharsets.UTF_8);
+                    {
+                        final ValidatableResponse response = Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
+                                () -> {
+                                    try {
+                                        return RestAssured
+                                                .given()
+                                                .contentType(ContentType.HTML)
+                                                .get("http://localhost:8080/quarkus-antora/dev/new.html")
+                                                .then();
+                                    } catch (Exception e) {
+                                        /* The reload of the service takes some time */
+                                        return null;
+                                    }
+                                },
+                                resp -> resp != null && resp.extract().statusCode() == 200);
+                        response.body(CoreMatchers.containsString(uniqueContent));
+                    }
+
+                } finally {
+                    Files.deleteIfExists(newFile);
+                }
+
+                /* Make sure new.html is not served anymore */
                 Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
                         () -> {
                             try {
                                 return RestAssured
                                         .given()
                                         .contentType(ContentType.HTML)
-                                        .get("http://localhost:8080/quarkus-antora/dev/_images/circle.svg")
+                                        .get("http://localhost:8080/quarkus-antora/dev/new.html")
                                         .then();
                             } catch (Exception e) {
                                 /* The reload of the service takes some time */
                                 return null;
                             }
                         },
-                        resp -> resp != null && resp.extract().statusCode() == 200);
+                        resp -> resp != null && resp.extract().statusCode() == 404);
+                /*
+                 * Make sure the @antora/lunr-extension has regenerated the search index and uniqueContent is not there
+                 * anymore
+                 */
+                RestAssured
+                        .given()
+                        .contentType(ContentType.HTML)
+                        .get("http://localhost:8080/search-index.js")
+                        .then()
+                        .statusCode(200)
+                        .body(CoreMatchers.not(CoreMatchers.containsString("\"" + uniqueContent + "\"")));
 
-            } finally {
-                /* Restore the old content bc. it is tracked by git */
-                Files.writeString(headerContentHbs, oldContent, StandardCharsets.UTF_8);
+                /* Live edit supplemental-ui */
+                {
+                    final ValidatableResponse response = Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
+                            () -> {
+                                try {
+                                    return RestAssured
+                                            .given()
+                                            .contentType(ContentType.HTML)
+                                            .get("http://localhost:8080/quarkus-antora/dev/index.html")
+                                            .then();
+                                } catch (Exception e) {
+                                    /* The reload of the service takes some time */
+                                    return null;
+                                }
+                            },
+                            resp -> resp != null && resp.extract().statusCode() == 200);
+                    response
+                            .body(CoreMatchers.containsString(">Home supplemental<"));
+                }
+                final Path headerContentHbs = baseDir.resolve("supplemental-ui/partials/header-content.hbs");
+                final String oldContent = Files.readString(headerContentHbs, StandardCharsets.UTF_8);
+                try {
+                    Assertions.assertThat(oldContent).contains(">Home supplemental<");
+                    Files.writeString(headerContentHbs,
+                            oldContent.replace(">Home supplemental<", ">Home supplemental changed<"),
+                            StandardCharsets.UTF_8);
+                    {
+                        Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
+                                () -> {
+                                    try {
+                                        return RestAssured
+                                                .given()
+                                                .contentType(ContentType.HTML)
+                                                .get("http://localhost:8080/quarkus-antora/dev/index.html")
+                                                .then();
+                                    } catch (Exception e) {
+                                        /* The reload of the service takes some time */
+                                        return null;
+                                    }
+                                },
+                                resp -> resp != null && resp.extract().statusCode() == 200
+                                        && resp.extract().body().asString().contains(">Home supplemental changed<"));
+                    }
 
-                /* Clean up the newly added image */
-                if (Files.exists(newImage)) {
-                    Files.delete(newImage);
+                    /* Add an image and make sure it triggers a rebuild */
+                    if (!Files.exists(newImage.getParent())) {
+                        Files.createDirectories(newImage.getParent());
+                    }
+                    Files.copy(baseDir.resolve("src/test/resources/circle.svg"), newImage);
+                    Awaitility.await().atMost(20, TimeUnit.SECONDS).until(
+                            () -> {
+                                try {
+                                    return RestAssured
+                                            .given()
+                                            .contentType(ContentType.HTML)
+                                            .get("http://localhost:8080/quarkus-antora/dev/_images/circle.svg")
+                                            .then();
+                                } catch (Exception e) {
+                                    /* The reload of the service takes some time */
+                                    return null;
+                                }
+                            },
+                            resp -> resp != null && resp.extract().statusCode() == 200);
+
+                } finally {
+                    /* Restore the old content bc. it is tracked by git */
+                    Files.writeString(headerContentHbs, oldContent, StandardCharsets.UTF_8);
+
+                    /* Clean up the newly added image */
+                    if (Files.exists(newImage)) {
+                        Files.delete(newImage);
+                    }
                 }
             }
+        } finally {
+            Files.writeString(antoraPlaybookYmlPath, originalPlaybookContent, StandardCharsets.UTF_8);
         }
     }
 }
