@@ -1,5 +1,7 @@
 package io.quarkiverse.antora;
 
+import java.util.Optional;
+
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
 import io.smallrye.config.ConfigMapping;
@@ -21,4 +23,15 @@ public interface FixedConfig {
      */
     @WithDefault("docker.io/antora/antora:3.1.10")
     String image();
+
+    /**
+     * The name of the container network to start Antora container with.
+     * The value `host` may come in handy when using local kroki container
+     * that would otherwise be invisible for the Antora container.
+     *
+     * @asciidoclet
+     * @since 3.27.0
+     */
+    Optional<String> containerNetwork();
+
 }

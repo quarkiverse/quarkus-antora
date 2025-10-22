@@ -14,6 +14,7 @@ ui:
 asciidoc:
   attributes:
     kroki-fetch-diagram: true
+    kroki-server-url: https://kroki.io/
   extensions:
     - asciidoctor-kroki
 antora:
