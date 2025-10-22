@@ -48,6 +48,13 @@ jobs:
         run: |
           mkdir -p ~/.redhat
           echo '{"disabled":true}' >> ~/.redhat/io.quarkus.analytics.localconfig
+          if [ ${{ matrix.container-runtime }} = "podman" ]; then
+            systemctl --user enable --now podman.socket
+            systemctl --user status podman.socket
+            export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock
+            export TESTCONTAINERS_RYUK_DISABLED=true
+          fi
+          echo "DOCKER_HOST=$DOCKER_HOST"
           ./mvnw install -B -ntp
 
       - name: Fail if there are uncommitted changes

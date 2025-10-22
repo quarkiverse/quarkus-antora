@@ -29,5 +29,28 @@ endif::add-copy-button-to-env-var[]
 |string
 |`+++docker.io/antora/antora:3.1.10+++`
 
+a|icon:lock[title=Fixed at build time] [[quarkus-antora_quarkus-antora-container-network]] [.property-path]##link:#quarkus-antora_quarkus-antora-container-network[`quarkus.antora.container-network`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++quarkus.antora.container-network+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+The name of the container network to start Antora container with.
+The value `host` may come in handy when using local kroki container
+that would otherwise be invisible for the Antora container.
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_ANTORA_CONTAINER_NETWORK+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_ANTORA_CONTAINER_NETWORK+++`
+endif::add-copy-button-to-env-var[]
+--
+|string
+|
+
 |===
 

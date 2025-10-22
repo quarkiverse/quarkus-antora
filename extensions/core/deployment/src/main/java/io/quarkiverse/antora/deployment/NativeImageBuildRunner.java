@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -45,7 +46,8 @@ public class NativeImageBuildRunner {
         containerName = "antora-" + RandomStringUtils.random(5, true, false);
     }
 
-    public void build(String antoraImageName, Path outputDir, Path antoraPlaybookPath, List<String> npmPackages)
+    public void build(String antoraImageName, Optional<String> networkMode, Path outputDir, Path antoraPlaybookPath,
+            List<String> npmPackages)
             throws InterruptedException, IOException {
 
         final List<String> cmd = new ArrayList<>();
@@ -89,6 +91,10 @@ public class NativeImageBuildRunner {
 
         cmd.add("--name");
         cmd.add(containerName);
+
+        networkMode.ifPresent(m -> {
+            cmd.add("--network=" + m);
+        });
 
         cmd.add("--entrypoint");
         cmd.add("/bin/sh");
