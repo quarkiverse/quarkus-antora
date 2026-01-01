@@ -30,7 +30,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <assertj.version>3.27.6</assertj.version>
-        <jsoup.version>1.21.2</jsoup.version>
+        <jsoup.version>1.22.1</jsoup.version>
         <groovy-maven-plugin.version>2.1.1</groovy-maven-plugin.version>
         <groovy.version>3.0.25</groovy.version>
         <quarkus.version>3.30.5</quarkus.version>
