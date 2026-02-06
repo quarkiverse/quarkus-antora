@@ -35,7 +35,7 @@
         <groovy.version>3.0.25</groovy.version>
         <quarkus.version>3.31.2</quarkus.version>
         <snakeyaml.version>2.5</snakeyaml.version><!-- @sync io.quarkus:quarkus-bom:${quarkus.version} dep:org.yaml:snakeyaml -->
-        <testcontainers.version>1.21.3</testcontainers.version>
+        <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
     <dependencyManagement>
         <dependencies>
