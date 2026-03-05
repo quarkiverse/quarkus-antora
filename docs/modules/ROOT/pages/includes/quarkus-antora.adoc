@@ -7,7 +7,7 @@ h|[.header-title]##Configuration property##
 h|Type
 h|Default
 
-a|icon:lock[title=Fixed at build time] [[quarkus-antora_quarkus-antora-image]] [.property-path]##link:#quarkus-antora_quarkus-antora-image[`quarkus.antora.image`]##
+a|icon:lock[title=Fixed at build time] [[quarkus-antora_quarkus-antora-image]] [.property-path]##link:#quarkus-antora_quarkus-antora-image[`+++quarkus.antora.image+++`]##
 ifdef::add-copy-button-to-config-props[]
 config_property_copy_button:+++quarkus.antora.image+++[]
 endif::add-copy-button-to-config-props[]
@@ -29,7 +29,7 @@ endif::add-copy-button-to-env-var[]
 |string
 |`+++docker.io/antora/antora:3.1.10+++`
 
-a|icon:lock[title=Fixed at build time] [[quarkus-antora_quarkus-antora-container-network]] [.property-path]##link:#quarkus-antora_quarkus-antora-container-network[`quarkus.antora.container-network`]##
+a|icon:lock[title=Fixed at build time] [[quarkus-antora_quarkus-antora-container-network]] [.property-path]##link:#quarkus-antora_quarkus-antora-container-network[`+++quarkus.antora.container-network+++`]##
 ifdef::add-copy-button-to-config-props[]
 config_property_copy_button:+++quarkus.antora.container-network+++[]
 endif::add-copy-button-to-config-props[]
