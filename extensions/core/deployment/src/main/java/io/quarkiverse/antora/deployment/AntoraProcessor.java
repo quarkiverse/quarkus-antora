@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +76,7 @@ public class AntoraProcessor {
 
     @BuildStep
     void buildAntoraSite(
+            AntoraBuildTimeConfig buildTimeConfig,
             FixedConfig fixedConfig,
             BuildSystemTargetBuildItem buildSystemTarget,
             Optional<AntoraPlaybookBuildItem> antoraPlaybook,
@@ -103,7 +105,12 @@ public class AntoraProcessor {
             }
         }
 
-        buildWithContainer(fixedConfig, gitRepoRoot, antoraPlaybookPath, pbInfo.npmPackages());
+        buildWithContainer(
+                fixedConfig,
+                gitRepoRoot,
+                antoraPlaybookPath,
+                pbInfo.npmPackages(),
+                buildTimeConfig.additionalArgs().orElse(Collections.emptyList()));
 
         try (Stream<Path> files = Files.walk(pbInfo.outDir)) {
             files.forEach(absP -> {
@@ -150,11 +157,15 @@ public class AntoraProcessor {
 
     }
 
-    private void buildWithContainer(FixedConfig fixedConfig, final Path gitRepoRoot, final Path antoraPlaybookPath,
-            List<String> npmPackages) {
+    private void buildWithContainer(
+            FixedConfig fixedConfig,
+            final Path gitRepoRoot,
+            final Path antoraPlaybookPath,
+            List<String> npmPackages,
+            List<String> additionalArgs) {
         try {
             new NativeImageBuildRunner().build(fixedConfig.image(), fixedConfig.containerNetwork(), gitRepoRoot,
-                    antoraPlaybookPath, npmPackages);
+                    antoraPlaybookPath, npmPackages, additionalArgs);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (IOException e) {

@@ -7,6 +7,27 @@ h|[.header-title]##Configuration property##
 h|Type
 h|Default
 
+a|icon:lock[title=Fixed at build time] [[quarkus-antora_quarkus-antora-additional-args]] [.property-path]##link:#quarkus-antora_quarkus-antora-additional-args[`+++quarkus.antora.additional-args+++`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++quarkus.antora.additional-args+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+A comma-separated list of extra command line options to add to `antora` command when building the site.
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++QUARKUS_ANTORA_ADDITIONAL_ARGS+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++QUARKUS_ANTORA_ADDITIONAL_ARGS+++`
+endif::add-copy-button-to-env-var[]
+--
+|list of string
+|
+
 a|icon:lock[title=Fixed at build time] [[quarkus-antora_quarkus-antora-image]] [.property-path]##link:#quarkus-antora_quarkus-antora-image[`+++quarkus.antora.image+++`]##
 ifdef::add-copy-button-to-config-props[]
 config_property_copy_button:+++quarkus.antora.image+++[]
