@@ -246,6 +246,7 @@ public interface LinkValidator {
         record CacheEntry(String message, Response response, long retryAtSystemTimeMs, int attempt) {
 
             private static final int NO_RETRY = -1;
+
             static CacheEntry retry(Response response, String message, long retryAtSystemTimeMs, int attempt) {
                 return new CacheEntry(message, response, retryAtSystemTimeMs, attempt);
             }
