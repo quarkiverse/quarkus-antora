@@ -47,7 +47,7 @@ public class NativeImageBuildRunner {
     }
 
     public void build(String antoraImageName, Optional<String> networkMode, Path outputDir, Path antoraPlaybookPath,
-            List<String> npmPackages)
+            List<String> npmPackages, List<String> additionalArgs)
             throws InterruptedException, IOException {
 
         final List<String> cmd = new ArrayList<>();
@@ -122,6 +122,9 @@ public class NativeImageBuildRunner {
             startScript.append(" && ");
         }
         startScript.append("antora --cache-dir=./antora-cache ");
+        for (String arg : additionalArgs) {
+            startScript.append('\'').append(arg.replace("'", "'\\''")).append('\'').append(" ");
+        }
         startScript.append(antoraPlaybookPath.toString());
 
         cmd.add(startScript.toString());
