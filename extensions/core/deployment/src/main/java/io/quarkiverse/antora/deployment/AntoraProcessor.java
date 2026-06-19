@@ -317,11 +317,9 @@ public class AntoraProcessor {
                                 "start_path", "docs"))));
         result.put("ui", Map.of(
                 "bundle", Map.of(
-                        "url", "https://github.com/quarkiverse/antora-ui-quarkiverse/releases/latest/download/ui-bundle.zip",
+                        "url",
+                        "https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable",
                         "snapshot", "true")));
-        result.put("asciidoc", Map.of(
-                "attributes", Map.of(
-                        "kroki-fetch-diagram", "true")));
 
         return result;
     }
