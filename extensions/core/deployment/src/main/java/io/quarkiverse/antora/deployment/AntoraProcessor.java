@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -249,6 +250,7 @@ public class AntoraProcessor {
         final List<String> npmPackages = new ArrayList<>();
         handleExtensions(playbook, npmPackages::add);
 
+        log.warn("augmentedAntoraPlaybookYml " + augmentedAntoraPlaybookYml);
         try (Writer out = Files.newBufferedWriter(augmentedAntoraPlaybookYml, StandardCharsets.UTF_8)) {
             yaml.dump(playbook, out);
         } catch (IOException e) {
@@ -263,28 +265,48 @@ public class AntoraProcessor {
         if (asciidoc instanceof Map) {
             final Object extensions = ((Map<String, Object>) asciidoc).get("extensions");
             if (extensions instanceof List) {
-                ((List<String>) extensions).stream().forEach(extensionConsumer);
+                ListIterator<Object> it = ((List<Object>) extensions).listIterator();
+                while (it.hasNext()) {
+                    Object node = it.next();
+                    if (node instanceof String) {
+                        extensionConsumer.accept(handlePackage((String) node, it::set));
+                    }
+                }
             }
         }
         final Object antora = playbook.get("antora");
         if (antora instanceof Map) {
             final Object extensions = ((Map<String, Object>) antora).get("extensions");
             if (extensions instanceof List) {
-                ((List<Object>) extensions).stream()
-                        .map(node -> {
-                            if (node instanceof String) {
-                                return (String) node;
-                            } else if (node instanceof Map) {
-                                Map<String, Object> o = (Map<String, Object>) node;
-                                return (String) o.get("require");
-                            } else {
-                                throw new IllegalStateException(
-                                        "Expected a string or object, but found " + node.getClass().getName());
-                            }
-                        })
-                        .forEach(extensionConsumer);
+                ListIterator<Object> it = ((List<Object>) extensions).listIterator();
+                while (it.hasNext()) {
+                    Object node = it.next();
+                    if (node instanceof String) {
+                        extensionConsumer.accept(handlePackage((String) node, it::set));
+                    } else if (node instanceof Map) {
+                        Map<String, Object> o = (Map<String, Object>) node;
+                        String npmPackage = (String) o.get("require");
+                        if (npmPackage != null) {
+                            extensionConsumer.accept(handlePackage(npmPackage, p -> o.put("require", p)));
+                        }
+                    } else {
+                        throw new IllegalStateException(
+                                "Expected a string or object, but found " + node.getClass().getName());
+                    }
+
+                }
             }
         }
+    }
+
+    private static String handlePackage(String npmPackage, Consumer<String> setNewValue) {
+        int atPos = npmPackage.lastIndexOf('@');
+        if (atPos > 0) {
+            // initial @ has a special meaning for Antora
+            String packageName = npmPackage.substring(0, atPos);
+            setNewValue.accept(packageName);
+        }
+        return npmPackage;
     }
 
     static void handleSupplementalFiles(Map<String, Object> playbook,

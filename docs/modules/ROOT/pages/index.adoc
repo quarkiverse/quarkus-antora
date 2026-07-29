@@ -112,6 +112,27 @@ then `quarkus-antora` will install them using `npm i <extension-1>[ <extension-2
 Local extension scripts are not supported at this time.
 ====
 
+=== Specify a version of an extension
+
+Antora currently does not support specifying extension versions.
+However, Quarkus Antora supports specifying those.
+
+Here is an example:
+
+.antora-playbook.yml
+[source,yaml]
+----
+...
+asciidoc:
+  extensions:
+    - asciidoctor-kroki@latest-0
+----
+
+If you specify an AsciiDoc extension like in the example the above, then Quarkus Antora will do the following:
+
+* Invoke `npm i asciidoctor-kroki@latest-0` before invoking `antora`
+* Remove `@latest-0` from the effective `antora-playbook.yml` stored in `target/antora-playbook.yml` before passing it to `antora`.
+
 == Configuration
 
 include::./includes/quarkus-antora.adoc[]

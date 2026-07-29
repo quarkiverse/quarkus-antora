@@ -16,7 +16,7 @@ asciidoc:
     kroki-fetch-diagram: true
     kroki-server-url: https://kroki.io/
   extensions:
-    - asciidoctor-kroki
+    - asciidoctor-kroki@latest-0
 antora:
   extensions:
   - require: '@antora/lunr-extension'
