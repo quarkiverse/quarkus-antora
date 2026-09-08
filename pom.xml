@@ -34,7 +34,7 @@
         <groovy-maven-plugin.version>2.1.1</groovy-maven-plugin.version>
         <groovy.version>3.0.25</groovy.version>
         <quarkus.version>3.39.2</quarkus.version>
-        <snakeyaml.version>2.6</snakeyaml.version><!-- @sync io.quarkus:quarkus-bom:${quarkus.version} dep:org.yaml:snakeyaml -->
+        <snakeyaml.version>2.7</snakeyaml.version><!-- @sync io.quarkus:quarkus-bom:${quarkus.version} dep:org.yaml:snakeyaml -->
         <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
     <dependencyManagement>
