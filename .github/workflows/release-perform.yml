@@ -26,7 +26,7 @@ jobs:
     secrets: inherit
     with:
       version: ${{github.event.inputs.tag || github.ref_name}}
-      java_version: 17
+      java_version: 21
 
   await-release-on-central:
     needs: perform-release
@@ -37,11 +37,11 @@ jobs:
         with:
           ref: ${{github.event.inputs.tag || github.ref_name}}
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
           cache: 'maven'
 
       - name: mvn install -DperformRelease
