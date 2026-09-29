@@ -12,7 +12,7 @@ import io.quarkus.vertx.http.runtime.RouteConstants;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.impl.MimeMapping;
+import io.vertx.core.http.MimeMapping;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.FileSystemAccess;
 import io.vertx.ext.web.handler.StaticHandler;
@@ -129,7 +129,7 @@ public class WebBundlerResourceHandler implements Handler<RoutingContext> {
         if (config.compressMediaTypes.isEmpty()) {
             return false;
         }
-        String contentType = MimeMapping.getMimeTypeForFilename(path);
+        String contentType = MimeMapping.mimeTypeForFilename(path);
         return contentType != null && config.compressMediaTypes.contains(contentType);
     }
 

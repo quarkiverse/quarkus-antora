@@ -21,8 +21,8 @@ public class AntoraCodeGen implements CodeGenProvider {
     }
 
     @Override
-    public String inputExtension() {
-        return "unneeded";
+    public String[] inputExtensions() {
+        return new String[0];
     }
 
     @Override

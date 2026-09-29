@@ -25,13 +25,12 @@ import org.apache.commons.lang3.SystemUtils;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Assertions;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.StreamReadFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-
 import io.quarkus.deployment.util.ContainerRuntimeUtil;
 import io.quarkus.deployment.util.FileUtil;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.StreamReadFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 public class NativeImageBuildRunner {
 
@@ -198,7 +197,7 @@ public class NativeImageBuildRunner {
 
         private final ObjectMapper mapper;
         final List<AntoraFrame> frames = new ArrayList<>();
-        private final Map<String, JsonProcessingException> exceptions = new LinkedHashMap<>();
+        private final Map<String, JacksonException> exceptions = new LinkedHashMap<>();
 
         public AntoraFrameConsumer() {
             mapper = JsonMapper.builder().enable(StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION).build();
@@ -230,7 +229,7 @@ public class NativeImageBuildRunner {
                     default:
                         throw new IllegalStateException("Unexpected AntoraFrame.level " + frame.getLevel());
                 }
-            } catch (JsonProcessingException e) {
+            } catch (JacksonException e) {
                 synchronized (exceptions) {
                     exceptions.put(rawFrame, e);
                 }
@@ -240,7 +239,7 @@ public class NativeImageBuildRunner {
         public void assertNoErrors() {
             synchronized (exceptions) {
                 if (!exceptions.isEmpty()) {
-                    Entry<String, JsonProcessingException> e = exceptions.entrySet().iterator().next();
+                    Entry<String, JacksonException> e = exceptions.entrySet().iterator().next();
                     throw new RuntimeException("Could not parse AntoraFrame " + e.getKey(), e.getValue());
                 }
             }
