@@ -4,7 +4,7 @@
     <parent>
         <groupId>io.quarkiverse.antora</groupId>
         <artifactId>quarkus-antora-parent</artifactId>
-        <version>4.0.0.Beta1</version>
+        <version>4.0.1.Beta1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
