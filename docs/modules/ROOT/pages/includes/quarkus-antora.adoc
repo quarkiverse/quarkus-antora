@@ -37,7 +37,7 @@ endif::add-copy-button-to-config-props[]
 [.description]
 --
 The fully qualified name of the Antora container image to use for generating the documentation site.
-Example: `docker.io/antora/antora:3.0.1`
+Example: `docker.io/antora/antora:3.2.1`
 
 
 ifdef::add-copy-button-to-env-var[]
@@ -48,7 +48,7 @@ Environment variable: `+++QUARKUS_ANTORA_IMAGE+++`
 endif::add-copy-button-to-env-var[]
 --
 |string
-|`+++docker.io/antora/antora:3.1.10+++`
+|`+++docker.io/antora/antora:3.2.1+++`
 
 a|icon:lock[title=Fixed at build time] [[quarkus-antora_quarkus-antora-container-network]] [.property-path]##link:#quarkus-antora_quarkus-antora-container-network[`+++quarkus.antora.container-network+++`]##
 ifdef::add-copy-button-to-config-props[]
