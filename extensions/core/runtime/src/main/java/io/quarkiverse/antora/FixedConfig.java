@@ -16,12 +16,12 @@ public interface FixedConfig {
 
     /**
      * The fully qualified name of the Antora container image to use for generating the documentation site.
-     * Example: `docker.io/antora/antora:3.2.2`
+     * Example: `docker.io/antora/antora:3.2.3`
      *
      * @asciidoclet
      * @since 0.0.5
      */
-    @WithDefault("docker.io/antora/antora:3.2.2")
+    @WithDefault("docker.io/antora/antora:3.2.3")
     String image();
 
     /**
