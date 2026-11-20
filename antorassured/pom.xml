@@ -68,6 +68,8 @@
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <org.jboss.logging.provider>jboss</org.jboss.logging.provider>
+                        <!-- Keep the default persistent cache of LinkValidatorImpl out of the real ~/.cache -->
+                        <user.home>${project.build.directory}/test-home</user.home>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

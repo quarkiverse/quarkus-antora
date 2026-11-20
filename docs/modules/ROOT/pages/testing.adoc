@@ -81,3 +81,112 @@ After that, you should see the test fail with a report like the following:
      - https://quarkus.io/guides/building-native-image#fake-fragment -> https://quarkus.io/guides/building-native-image#fake-fragment
          - Could not find #fake-fragment
 ----
+
+[[persistent-cache]]
+=== Persistent cache of remote pages
+
+Link validation typically runs with every build, while most remote pages change rarely.
+Some remote servers do not tolerate being accessed that often and respond with `429 Too Many Requests`.
+
+Therefore, since Quarkus Antora 4.0.0, `AntorAssured` stores the remote pages it has fetched in the local file system
+and reuses them in subsequent runs.
+The cache is enabled by default.
+
+[cols="1,2"]
+|===
+|Setting |Default
+
+|Cache directory
+|`~/.cache/antorassured/pages`, where `~` is the value of the `user.home` system property
+
+|Expiration: pages fetched longer ago are fetched again
+|36 hours
+
+|Garbage collection age: pages fetched longer ago are deleted from the cache directory
+|180 days
+|===
+
+The cache works as follows:
+
+* Before a page is fetched, the cache directory is consulted.
+  If the page was stored there within the expiration period, it is not requested from the remote server.
+  The stored page is used instead, also for validating the fragments of the links.
+* A cached page does not count against any `RateLimit` and it is never delayed by it.
+  It is still counted by policies such as `AggregatePolicy.countAtLeast(200, n)`.
+* Only responses having a `2xx` status are stored.
+  Other responses, such as `404`, `429` or `503`, timeouts and connection failures are never stored,
+  so broken links are checked against the remote server with each run.
+* The site under test is never stored.
+  By default, this applies to all URIs whose host is `localhost` or a loopback IP address, such as `127.0.0.1`.
+  `LinkStream.validate()` (without parameters) in addition excludes all URIs under the base URI of the site under test,
+  which is important if you set `quarkus.http.test-host` to some other host name.
+* URIs containing credentials, such as `+https://user:password@example.com/+`, are never stored.
+* Pages requested with different `Accept` headers are stored separately.
+  Other request headers are not taken into account.
+* The cache directory can be used by several builds at the same time.
+
+==== Stale pages
+
+The cache makes the validation faster and less demanding for the remote servers at the cost of working with pages
+that may be up to 36 hours old (or whatever expiration you set):
+
+* A link to a page that was removed from the remote server in the meantime is still reported as valid.
+* A link to a fragment that was added to the remote page in the meantime is still reported as invalid.
+
+Both issues go away after the cached page expires.
+If you do not want to wait, delete the cache directory or only the directory of the given page.
+The path of the directory is derived from the URI of the page as follows:
+`<cache directory>/<reversed host name>/<scheme>/<port>/<accept header>/<path>`.
+For example, `+https://quarkus.io/guides/building-native-image+` is stored in
+`~/.cache/antorassured/pages/io/quarkus/https/443/no-accept/guides/building-native-image`.
+Characters that are not allowed in file names on some operating system are replaced by underscores.
+
+Deleting the files is always safe.
+The validation never fails because of a missing or broken content of the cache directory.
+
+==== Garbage collection
+
+At the end of each validation that has used the cache, the pages fetched more than 180 days ago are deleted from the cache
+directory, together with the directories that became empty.
+These are typically pages that are not linked from your documentation anymore.
+Files not created by `AntorAssured` are never deleted.
+
+[[persistent-cache-ci]]
+==== Using the cache on CI
+
+The cache is useful on CI only if the cache directory is restored before the build and saved after it.
+The directory to save and restore is `~/.cache/antorassured/pages`, unless you have configured another one.
+It can be copied to another machine, even to one running a different operating system.
+
+[NOTE]
+====
+The pages are stored as they were received, without any encryption.
+Keep that in mind if you validate links to private resources, for example using `LinkGroup.bearerToken(String)` or
+`LinkGroup.basicAuth(String, String)`, and you share the cache directory with others.
+The tokens and passwords themselves are never stored.
+====
+
+==== Configuring the cache
+
+The cache can be configured only by passing a custom `LinkValidatorImpl` to `LinkStream.validate(LinkValidator)`:
+
+[source,java]
+----
+include::example$testing/PersistentCacheExamples.java[tag=customCache,indent=0]
+----
+
+[WARNING]
+====
+A `LinkValidatorImpl` you create yourself does not know the base URI of the site under test.
+If your site under test is not served from `localhost`,
+make sure that the predicate passed to the constructor returns `false` for its URIs.
+Otherwise, the internal links would be validated against a previous build of your site.
+====
+
+There is no dedicated option for disabling the cache.
+Pass a predicate returning `false` for every URI instead:
+
+[source,java]
+----
+include::example$testing/PersistentCacheExamples.java[tag=noCache,indent=0]
+----
