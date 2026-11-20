@@ -143,6 +143,7 @@
                                 <resource>
                                     <directory>${project.basedir}/src/test/java/io/quarkiverse/antora/test</directory>
                                     <include>AntoraSiteTest.java</include>
+                                    <include>PersistentCacheExamples.java</include>
                                     <filtering>false</filtering>
                                 </resource>
                             </resources>

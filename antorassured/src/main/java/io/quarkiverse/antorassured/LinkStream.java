@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -261,15 +262,26 @@ public class LinkStream {
     }
 
     /**
+     * Validates the {@link Link}s using a {@link LinkValidatorImpl} with the default settings.
+     * <p>
+     * Since 4.0.0, the responses of remote servers are stored in a persistent cache under
+     * {@link LinkValidatorImpl#defaultCacheDirectory()} and reused by subsequent validations for
+     * {@link LinkValidatorImpl#DEFAULT_CACHE_EXPIRATION}. The cache is not used for loopback URIs, see
+     * {@link LinkValidatorImpl#notLoopback()}, and for URIs under {@link ResourceResolver#getBaseUri()}, so that the
+     * site under test is always fetched. Use {@link #validate(LinkValidator)} to configure the cache.
+     *
      * @return a {@link ValidationErrorStream} using {@link LinkValidatorImpl}.
      *
      * @since 1.0.0
      */
     public ValidationErrorStream validate() {
-        return validate(new LinkValidatorImpl());
+        return validate(LinkValidatorImpl.forSite(resourceResolver == null ? null : resourceResolver.getBaseUri()));
     }
 
     /**
+     * Validates the {@link Link}s using the given {@link LinkValidator}. If at least one {@link Link} was passed to the
+     * {@code validator}, {@link LinkValidator#validationFinished()} is called at the end.
+     *
      * @param validator the {@link LinkValidator} to use for validating {@link Link}s
      * @return a new {@link ValidationErrorStream}
      *
@@ -277,6 +289,7 @@ public class LinkStream {
      */
     public ValidationErrorStream validate(LinkValidator validator) {
         final long deadline = System.currentTimeMillis() + overallTimeout;
+        final AtomicBoolean validatorUsed = new AtomicBoolean();
         final List<ValidationResult> invalidWithouRetry = new ArrayList<>();
         final List<ValidationResult> invalidWithRetry = new ArrayList<>();
         Stream<Link> newLinks = links;
@@ -296,6 +309,7 @@ public class LinkStream {
                                 "Did not try, overall timeout of " + overallTimeout + " ms expired",
                                 -1);
                     } else {
+                        validatorUsed.set(true);
                         return validator.validate(req);
                     }
                 })
@@ -346,6 +360,7 @@ public class LinkStream {
                     throw new RuntimeException(e);
                 }
             }
+            validatorUsed.set(true);
             final ValidationResult newResult = validator.validate(req);
             if (newResult.isValid()) {
                 invalidWithRetry.remove(0);
@@ -357,6 +372,9 @@ public class LinkStream {
                 invalidWithouRetry.add(newResult);
             }
 
+        }
+        if (validatorUsed.get()) {
+            validator.validationFinished();
         }
         return new ValidationErrorStream(
                 Stream.of(
